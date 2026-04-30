@@ -1,0 +1,49 @@
+# Maps raw category names from each platform to a normalized label.
+# Used by SearchQuery.categories filtering.
+# Key = normalized category; values = list of raw strings (case-insensitive contains).
+
+swim:
+  - swim
+  - aquatic
+  - water babies
+  - parent & tot swim
+
+gymnastics:
+  - gymnastics
+  - tumbling
+  - mommy and me movement
+
+music:
+  - music
+  - sing
+  - kindermusik
+  - music together
+
+dance:
+  - dance
+  - ballet
+  - tutu
+
+art:
+  - art
+  - craft
+  - create
+
+sports:
+  - soccer
+  - basketball
+  - t-ball
+  - multisport
+  - sport sampler
+
+storytime:
+  - storytime
+  - story time
+  - read aloud
+
+general:
+  - parent & tot
+  - toddler
+  - preschool explore
+  - early childhood
+  - family program

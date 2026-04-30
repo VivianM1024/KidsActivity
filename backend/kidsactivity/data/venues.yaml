@@ -1,0 +1,236 @@
+# Venue catalog. Add new entries by appending; if a venue uses an existing
+# platform (activenet / webtrac / amilia / biblio_commons / library_calendar /
+# communico / custom_html), no code change is needed. For a brand-new
+# platform, drop a scraper into kidsactivity/scrapers/ and register it in
+# scrapers/__init__.py::PLATFORM_SCRAPERS.
+#
+# Required fields per venue:
+#   slug, name, venue_type, platform, base_url, center_lat, center_lon
+# Optional:
+#   sitecode (WebTrac), amilia_org_slug (Amilia), search_url, served_zipcodes,
+#   aliases, custom_config (CUSTOM_HTML)
+#
+# venue_type ∈ {park_district, library, community_center, museum}
+
+venues:
+  # ============================================================
+  # Park districts — ActiveNet
+  # ============================================================
+  - slug: chicagoparkdistrict
+    name: Chicago Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/chicagoparkdistrict/
+    center_lat: 41.8781
+    center_lon: -87.6298
+
+  - slug: napervilleparks
+    name: Naperville Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/napervilleparks/
+    center_lat: 41.7506
+    center_lon: -88.1528
+
+  - slug: nbparks
+    name: Northbrook Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/nbparks/
+    center_lat: 42.1275
+    center_lon: -87.8290
+
+  - slug: ahpd
+    name: Arlington Heights Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/ahpd/
+    center_lat: 42.0883
+    center_lon: -87.9806
+
+  - slug: schaumburg
+    name: Schaumburg Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/schaumburg/
+    center_lat: 42.0334
+    center_lon: -88.0834
+
+  - slug: elmhurstparks
+    name: Elmhurst Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/elmhurstparks/
+    center_lat: 41.8994
+    center_lon: -87.9403
+
+  - slug: stcparks
+    name: St. Charles Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/stcparks/
+    center_lat: 41.9139
+    center_lon: -88.3092
+
+  - slug: wooddalepd
+    name: Wood Dale Park District
+    venue_type: park_district
+    platform: activenet
+    base_url: https://anc.apm.activecommunities.com/wooddalepd/
+    center_lat: 41.9636
+    center_lon: -87.9789
+
+  # ============================================================
+  # Park districts — WebTrac (Vermont Systems)
+  # ============================================================
+  - slug: wilmettepark
+    name: Wilmette Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://web2.myvscloud.com/wbwsc/ilwilmettewt.wsc/
+    sitecode: ilwilmettewt
+    center_lat: 42.0770
+    center_lon: -87.7229
+
+  - slug: winpark
+    name: Winnetka Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://web2.myvscloud.com/wbwsc/ilwinnetkawt.wsc/
+    sitecode: ilwinnetkawt
+    center_lat: 42.1081
+    center_lon: -87.7356
+
+  - slug: northfieldparks
+    name: Northfield Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://web2.myvscloud.com/wbwsc/ilnorthfieldwt.wsc/
+    sitecode: ilnorthfieldwt
+    center_lat: 42.0998
+    center_lon: -87.7809
+
+  - slug: glenviewparks
+    name: Glenview Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://webtrrac.glenviewparks.org/WEB/wbwsc/webtrac.wsc/
+    center_lat: 42.0697
+    center_lon: -87.7878
+
+  - slug: skokieparks
+    name: Skokie Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://web2.myvscloud.com/wbwsc/ilskokiewt.wsc/
+    sitecode: ilskokiewt
+    center_lat: 42.0334
+    center_lon: -87.7334
+
+  - slug: mpparkdistrict
+    name: Mt. Prospect Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://register.mppd.org/
+    center_lat: 42.0664
+    center_lon: -87.9373
+
+  - slug: glencoepd
+    name: Glencoe Park District
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://ilglencoeweb.myvscloud.com/webtrac/web/
+    sitecode: ilglencoeweb
+    center_lat: 42.1350
+    center_lon: -87.7581
+
+  - slug: pdhp
+    name: Park District of Highland Park
+    venue_type: park_district
+    platform: webtrac
+    base_url: https://ilhighlandparkweb.myvscloud.com/webtrac/web/
+    sitecode: ilhighlandparkweb
+    center_lat: 42.1817
+    center_lon: -87.8000
+
+  # ============================================================
+  # Park districts — Amilia
+  # ============================================================
+  - slug: cityofevanston
+    name: City of Evanston Parks & Rec
+    venue_type: park_district
+    platform: amilia
+    base_url: https://app.amilia.com/store/en/cityofevanston/shop/
+    amilia_org_slug: cityofevanston
+    center_lat: 42.0451
+    center_lon: -87.6877
+
+  # ============================================================
+  # Libraries (stubbed — fill in URLs when the scrapers ship)
+  # Uncomment and complete once biblio_commons/library_calendar/communico
+  # scrapers are implemented.
+  # ============================================================
+  # - slug: skokielibrary
+  #   name: Skokie Public Library
+  #   venue_type: library
+  #   platform: biblio_commons
+  #   base_url: https://skokielibrary.bibliocommons.com/
+  #   center_lat: 42.0334
+  #   center_lon: -87.7334
+  #
+  # - slug: epl
+  #   name: Evanston Public Library
+  #   venue_type: library
+  #   platform: biblio_commons
+  #   base_url: https://epl.bibliocommons.com/
+  #   center_lat: 42.0451
+  #   center_lon: -87.6877
+  #
+  # - slug: glenviewpl
+  #   name: Glenview Public Library
+  #   venue_type: library
+  #   platform: library_calendar
+  #   base_url: https://www.glenviewpl.org/
+  #   center_lat: 42.0697
+  #   center_lon: -87.7878
+  #
+  # - slug: northbrookpl
+  #   name: Northbrook Public Library
+  #   venue_type: library
+  #   platform: communico
+  #   base_url: https://www.northbrook.info/
+  #   center_lat: 42.1275
+  #   center_lon: -87.8290
+
+  # ============================================================
+  # Community centers (stubbed)
+  # Many YMCA / JCC sites already use ActiveNet — register them under that
+  # platform instead of writing a new scraper.
+  # ============================================================
+  # - slug: ymcametrochicago
+  #   name: YMCA of Metro Chicago
+  #   venue_type: community_center
+  #   platform: activenet
+  #   base_url: https://anc.apm.activecommunities.com/ymcachicago/
+  #   center_lat: 41.8781
+  #   center_lon: -87.6298
+
+  # ============================================================
+  # Museums (stubbed — needs CUSTOM_HTML config per site)
+  # ============================================================
+  # - slug: kohlchildrens
+  #   name: Kohl Children's Museum
+  #   venue_type: museum
+  #   platform: custom_html
+  #   base_url: https://www.kohlchildrensmuseum.org/
+  #   center_lat: 42.0747
+  #   center_lon: -87.7747
+  #   custom_config:
+  #     listing_url: https://www.kohlchildrensmuseum.org/events/
+  #     item_selector: ".event-card"
+  #     fields:
+  #       name: ".event-title"
+  #       date: ".event-date"
+  #       url: "a@href"
+  #     llm_fallback: true
+  #     audience_filter: ["kids", "family", "children"]

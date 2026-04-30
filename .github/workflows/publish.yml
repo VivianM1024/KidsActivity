@@ -1,0 +1,58 @@
+name: Weekly publish
+
+# Once a week the scraper crawls every configured venue, normalizes the
+# data, and commits the resulting JSON files to docs/data/. GitHub Pages
+# is configured to serve `main:/docs`, so the JSON is then live at
+# https://vivianm1024.github.io/KidsActivity/data/{manifest,venues,activities}.json
+# and the iOS app fetches it on launch.
+
+on:
+  schedule:
+    # Monday 09:00 UTC ≈ 03:00 Chicago summer / 04:00 winter.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kidsactivity-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      KA_LOGGING__LEVEL: INFO
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Crawl & publish
+        working-directory: backend
+        run: kidsactivity publish
+
+      - name: Commit JSON
+        run: |
+          git config user.name "kidsactivity-bot"
+          git config user.email "kidsactivity-bot@users.noreply.github.com"
+          git add docs/data/*.json
+          if git diff --cached --quiet; then
+            echo "No data changes — skipping commit."
+            exit 0
+          fi
+          git commit -m "Weekly data refresh ($(date -u +%Y-%m-%d))"
+          git push
