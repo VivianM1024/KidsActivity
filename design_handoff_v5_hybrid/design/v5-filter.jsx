@@ -14,6 +14,7 @@ function V5FilterSheet() {
   const [days, setDays] = React.useState({ Mon:false, Tue:false, Wed:false, Thu:false, Fri:false, Sat:true, Sun:true });
   const [venues, setVenues] = React.useState({ park_district:true, library:true, museum:true });
   const [cats, setCats] = React.useState({ Sports:true, Arts:true, STEM:true, Events:true, Storytime:false });
+  const [moreOpen, setMoreOpen] = React.useState(false);
 
   const toggleKid = (id) => {
     setSelectedKidIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]);
@@ -187,6 +188,26 @@ function V5FilterSheet() {
         </div>
       </V5Section>
 
+      <div onClick={() => setMoreOpen((v) => !v)} style={{
+        margin: '4px 16px 14px', padding: '12px 14px',
+        background: '#fff', borderRadius: 12,
+        boxShadow: '0 1px 2px rgba(60,40,20,0.04), 0 0 0 0.5px rgba(60,40,20,0.06)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        cursor: 'pointer',
+      }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#26201A', letterSpacing: -0.1 }}>More filters</div>
+          <div style={{ fontSize: 12, color: '#8B7E6E', marginTop: 1 }}>
+            Days, price, registration, venue, category
+          </div>
+        </div>
+        <div style={{
+          fontSize: 18, color: '#A89B86',
+          transition: 'transform 0.2s', transform: moreOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+        }}>›</div>
+      </div>
+
+      {moreOpen && (<>
       <V5Section label="Days">
         <div style={{ padding: '0 16px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => {
@@ -285,6 +306,7 @@ function V5FilterSheet() {
           })}
         </div>
       </V5Section>
+      </>)}
 
       <div style={{ height: 24 }} />
 

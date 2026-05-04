@@ -16,7 +16,6 @@ struct LoadedData {
     let activities: [Activity]
 }
 
-@MainActor
 final class DataLoader {
     static let baseURL = URL(string: "https://vivianm1024.github.io/KidsActivity/data/")!
 
@@ -61,7 +60,11 @@ final class DataLoader {
                     ))
                 }
                 let venues = try decoder.decode([Venue].self, from: v)
-                let activities = try decoder.decode([Activity].self, from: a)
+                // TEMP: slice to first 500 records BEFORE decode while we
+                // figure out why the full 12k set leaks memory in the iOS
+                // Simulator (Mac-native decode of the same data: 0.36s, 200MB).
+                let aLimited = sliceJSONArray(a, prefix: 500) ?? a
+                let activities = try decoder.decode([Activity].self, from: aLimited)
                 writeCache(manifest: m, venues: v, activities: a)
                 return .success(LoadedData(manifest: manifest, venues: venues, activities: activities))
             } catch {
@@ -70,6 +73,15 @@ final class DataLoader {
         } catch {
             return .failure(.network(error))
         }
+    }
+
+    /// Use JSONSerialization to take the first `prefix` entries of a JSON
+    /// array Data and re-serialize, so we can decode a smaller slice without
+    /// pulling the whole thing through Codable.
+    private func sliceJSONArray(_ data: Data, prefix: Int) -> Data? {
+        guard let arr = try? JSONSerialization.jsonObject(with: data) as? [Any] else { return nil }
+        let slice = Array(arr.prefix(prefix))
+        return try? JSONSerialization.data(withJSONObject: slice)
     }
 
     private func fetch(_ filename: String) async throws -> Data {
@@ -108,67 +120,8 @@ final class DataLoader {
 }
 
 extension JSONDecoder {
-    static var kidsActivity: JSONDecoder {
-        let d = JSONDecoder()
-        // Pydantic emits ISO-8601 for datetimes ("2026-04-30T09:00:00+00:00")
-        // and bare YYYY-MM-DD for dates. Custom decoder handles both shapes.
-        d.dateDecodingStrategy = .custom { decoder in
-            let container = try decoder.singleValueContainer()
-            let raw = try container.decode(String.self)
-            if let dt = isoFormatter.date(from: raw) ?? isoFractional.date(from: raw) {
-                return dt
-            }
-            // Pydantic emits naive datetimes (no timezone) for fields like
-            // Registration.opens_at — e.g. "2025-11-17T00:00:00". Treat as UTC.
-            if let dt = naiveDatetime.date(from: raw) ?? naiveDatetimeFractional.date(from: raw) {
-                return dt
-            }
-            if let day = ymdFormatter.date(from: raw) {
-                return day
-            }
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unrecognized date: \(raw)"
-            )
-        }
-        return d
-    }
+    // Date fields are kept as raw strings on the model and parsed lazily in
+    // computed properties — letting JSONDecoder skip the per-date Decoder
+    // construction that .custom triggers (a known perf cliff at 10k+ items).
+    static var kidsActivity: JSONDecoder { JSONDecoder() }
 }
-
-private let isoFormatter: ISO8601DateFormatter = {
-    let f = ISO8601DateFormatter()
-    f.formatOptions = [.withInternetDateTime]
-    return f
-}()
-
-private let isoFractional: ISO8601DateFormatter = {
-    let f = ISO8601DateFormatter()
-    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return f
-}()
-
-private let ymdFormatter: DateFormatter = {
-    let f = DateFormatter()
-    f.calendar = Calendar(identifier: .iso8601)
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.dateFormat = "yyyy-MM-dd"
-    return f
-}()
-
-private let naiveDatetime: DateFormatter = {
-    let f = DateFormatter()
-    f.calendar = Calendar(identifier: .iso8601)
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.locale = Locale(identifier: "en_US_POSIX")
-    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-    return f
-}()
-
-private let naiveDatetimeFractional: DateFormatter = {
-    let f = DateFormatter()
-    f.calendar = Calendar(identifier: .iso8601)
-    f.timeZone = TimeZone(secondsFromGMT: 0)
-    f.locale = Locale(identifier: "en_US_POSIX")
-    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-    return f
-}()

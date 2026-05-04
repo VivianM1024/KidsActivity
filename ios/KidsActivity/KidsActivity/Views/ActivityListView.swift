@@ -6,6 +6,8 @@ import SwiftUI
 struct BrowseView: View {
     @Environment(ActivityStore.self) private var store
     @State private var showFilters = false
+    @State private var showSettings = false
+    @State private var showWhyThis = false
     @State private var searchDebounceWorkItem: DispatchWorkItem?
     @State private var localSearch: String = ""
 
@@ -61,6 +63,12 @@ struct BrowseView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape")
+                        .foregroundStyle(.warmTextPrimary)
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showFilters = true } label: {
                     let n = store.filters.activeCount
@@ -81,6 +89,12 @@ struct BrowseView: View {
         .toolbarBackground(Color.warmCanvas, for: .navigationBar)
         .sheet(isPresented: $showFilters) {
             FilterSheet()
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
+        .sheet(isPresented: $showWhyThis) {
+            WhyThisSheet()
         }
         .onAppear { localSearch = store.searchText }
         .onChange(of: localSearch) { _, new in
@@ -264,9 +278,16 @@ struct BrowseView: View {
 
             Spacer(minLength: 0)
 
-            Text("\(matchCount) match")
-                .font(.system(size: 12).monospacedDigit())
+            Button { showWhyThis = true } label: {
+                HStack(spacing: 3) {
+                    Text("\(matchCount) match")
+                        .font(.system(size: 12).monospacedDigit())
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 10, weight: .semibold))
+                }
                 .foregroundStyle(.warmTextTertiary)
+            }
+            .buttonStyle(.plain)
 
             HStack(spacing: 2) {
                 ForEach(SortMode.allCases, id: \.self) { mode in

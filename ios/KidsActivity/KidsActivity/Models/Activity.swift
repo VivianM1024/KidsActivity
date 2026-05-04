@@ -20,7 +20,6 @@ struct Activity: Identifiable, Codable, Hashable {
     let category: String?
     let rawCategory: String?
     let description: String?
-    let scrapedAt: Date
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -37,7 +36,6 @@ struct Activity: Identifiable, Codable, Hashable {
         case category
         case rawCategory = "raw_category"
         case description
-        case scrapedAt = "scraped_at"
     }
 }
 
@@ -67,19 +65,47 @@ enum VenueType: String, Codable, CaseIterable, Hashable {
 }
 
 struct Schedule: Codable, Hashable {
-    let startDate: Date?
-    let endDate: Date?
+    // Stored as raw "yyyy-MM-dd" strings; parsed lazily so the JSONDecoder
+    // can use its fast String path instead of the (very slow) custom date
+    // decoding strategy.
+    private let startDateRaw: String?
+    private let endDateRaw: String?
     let weeklyTimes: [WeeklyTime]
     let rawScheduleText: String?
     let numSessions: Int?
 
+    var startDate: Date? { startDateRaw.flatMap(DateParser.ymd) }
+    var endDate: Date? { endDateRaw.flatMap(DateParser.ymd) }
+
     enum CodingKeys: String, CodingKey {
-        case startDate = "start_date"
-        case endDate = "end_date"
+        case startDateRaw = "start_date"
+        case endDateRaw = "end_date"
         case weeklyTimes = "weekly_times"
         case rawScheduleText = "raw_schedule_text"
         case numSessions = "num_sessions"
     }
+}
+
+enum DateParser {
+    private static let ymdFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .iso8601)
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+    private static let naiveFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .iso8601)
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return f
+    }()
+
+    static func ymd(_ s: String) -> Date? { ymdFormatter.date(from: s) }
+    static func naive(_ s: String) -> Date? { naiveFormatter.date(from: s) }
 }
 
 struct WeeklyTime: Codable, Hashable {
@@ -160,18 +186,14 @@ struct AgeRange: Codable, Hashable {
 
 struct Registration: Codable, Hashable {
     let isOpen: Bool?
-    let opensAt: Date?
-    let closesAt: Date?
-    let residentOpensAt: Date?
-    let nonResidentOpensAt: Date?
+    private let opensAtRaw: String?
     let rawText: String?
+
+    var opensAt: Date? { opensAtRaw.flatMap(DateParser.naive) }
 
     enum CodingKeys: String, CodingKey {
         case isOpen = "is_open"
-        case opensAt = "opens_at"
-        case closesAt = "closes_at"
-        case residentOpensAt = "resident_opens_at"
-        case nonResidentOpensAt = "non_resident_opens_at"
+        case opensAtRaw = "opens_at"
         case rawText = "raw_text"
     }
 }

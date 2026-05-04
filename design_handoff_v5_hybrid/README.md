@@ -7,18 +7,31 @@ information of the existing list view but replaces the system-default
 SwiftUI chrome with a warm, editorial visual language tuned for parents
 quickly triaging kids' activities across multiple kids.
 
-The redesign covers four screens:
+The redesign covers the following surfaces:
 
-1. **Browse** — main feed. Search, kid picker (multi-select), category
-   chip rail, sort control, dense list of activity rows.
-2. **Filters** — bottom sheet with kid-aware age filtering, distance,
-   registration status, price, day-of-week, venue type, category.
-3. **Saved** — a parent's shortlist, split into "Considering" vs
-   "Registered". Each row shows which kid it's for.
-4. **Calendar** — month strip + day-grouped agenda of registered events.
-   Cards are color-accented by kid.
-5. **Activity Detail** — full activity view with schedule, location,
-   pricing, registration CTA.
+**Core screens**
+1. **Browse** (`v5-hybrid.jsx`) — main feed. Search, kid picker (multi-select), category chip rail, sort control, dense list of activity rows.
+2. **Filters** (`v5-filter.jsx`) — bottom sheet. Primary filters (kids, ages, distance, days) inline; advanced filters (price, registration, venue type, category) collapsed under "More filters".
+3. **Saved** (`v5-saved.jsx`) — parent's shortlist, split into "Considering" vs "Registered". Each row shows which kid it's for.
+4. **Calendar** (`v5-calendar.jsx`) — month strip + day-grouped agenda of registered events. Cards are color-accented by kid.
+5. **Activity Detail** (`v5-detail.jsx`) — full activity view with schedule, location, pricing, registration CTA.
+
+**First-launch + onboarding**
+6. **Onboarding** (`v5-onboarding.jsx`) — three-step flow: welcome → add kids (name + age + color) → set ZIP / distance.
+
+**Empty / loading / error states**
+7. **Empty states** (`v5-empty.jsx`) — no matches, saved empty, calendar empty.
+8. **Loading skeletons** (`v5-loading.jsx`) — Browse list and Calendar agenda shimmer.
+9. **Cached banner** (`v5-empty.jsx::V5BrowseCached`) — inline strip on Browse when offline.
+
+**Registration & external handoff**
+10. **Registration handoff** (`v5-handoff.jsx`) — bridge sheet that warns the user before deep-linking to the venue's external registration site.
+
+**Coordination**
+11. **Conflict detection** (`v5-conflicts.jsx`) — Calendar shows overlapping events with a "Resolve" pill; the resolve sheet offers move-time, choose-one, or split-between-parents.
+12. **Co-parent assignments** (`v5-coparent.jsx`) — opt-in feature for linked parents. Detail page has a collapsed "+ Add Sam to this activity" row by default; expanded picker offers Both / Just one / Split kids modes. Calendar shows parent chips only on assigned events; filter strip appears only after at least one assignment exists.
+13. **Share / link parents** (`v5-share.jsx`) — generate code to invite a co-parent, enter their code, view the linked-state settings.
+14. **Why this?** (`v5-transparency.jsx`) — sort transparency overlay explaining ranking signals.
 
 ## About the design files
 
@@ -56,7 +69,12 @@ toolbar.
 
 The Browse screen is `v5-hybrid.jsx`; Filters `v5-filter.jsx`; Saved
 `v5-saved.jsx`; Calendar `v5-calendar.jsx`; Detail `v5-detail.jsx`.
-Shared mock data + label helpers are in `activities.jsx`.
+Onboarding `v5-onboarding.jsx`; empty/cached states `v5-empty.jsx`;
+loading shimmer `v5-loading.jsx`; registration bridge `v5-handoff.jsx`;
+conflict resolution `v5-conflicts.jsx`; share/link `v5-share.jsx`;
+sort transparency `v5-transparency.jsx`; co-parent assignments
+`v5-coparent.jsx`. Shared mock data + label helpers are in
+`activities.jsx`.
 
 ---
 
@@ -356,6 +374,77 @@ Persistence: use SwiftData (preferred for iOS 17+) or
 `UserDefaults` + JSON for kids, saved set, registered set,
 generated events.
 
+### New models for additional surfaces
+
+```swift
+// Co-parent assignment (v5-coparent.jsx)
+struct Parent: Identifiable, Codable, Hashable {
+    let id: UUID
+    var name: String
+    var initial: String
+    var hue: Double           // 0\u2013360 OKLCH H
+    var role: Role            // .you | .partner
+}
+
+enum AssignmentKind: Codable {
+    case both                                    // both parents going
+    case solo(parentId: Parent.ID)               // one parent takes both kids
+    case split(byKid: [Kid.ID: Parent.ID])       // different parents per kid
+}
+
+// Persisted per (activity, session) or per activity if "apply to all sessions"
+struct Assignment: Codable, Hashable {
+    var activityId: Activity.ID
+    var sessionDate: Date?      // nil \u2192 default for all sessions
+    var kind: AssignmentKind
+}
+
+// Linked-parent state (v5-share.jsx)
+struct LinkedParent: Codable {
+    var partner: Parent
+    var inviteCode: String      // e.g. "maple-otter-39"
+    var linkedAt: Date
+}
+```
+
+The Calendar parent-filter bar and the Settings load summary are
+**both opt-in surfaces**: only render the filter bar when at least
+one event has an `Assignment`; only show the load summary inside
+the linked-state Settings screen (never push notifications about it).
+
+## Suggested implementation order
+
+1. **Tokens** \u2014 add a `DesignTokens.swift` with `Color` extensions
+   (warmCanvas, warmText, terracotta, sageRegistered) and a
+   `CategoryStyle` lookup. Add `Kid` model + sample data.
+2. **TabView shell** \u2014 three tabs, placeholder views.
+3. **Onboarding flow** (`v5-onboarding.jsx`) \u2014 welcome \u2192 add kids \u2192
+   set ZIP. Drives initial `kids` array and home location.
+4. **BrowseView** \u2014 port `v5-hybrid.jsx` row by row. Start with
+   static mock data, then wire to `store.filteredActivities`.
+   Add empty + skeleton + cached-banner states from `v5-empty.jsx`
+   and `v5-loading.jsx`.
+5. **FilterSheet** rewrite \u2014 keep the existing `@Bindable store`
+   pattern, change layout. Primary filters inline, advanced filters
+   collapsed under "More filters".
+6. **Activity detail** \u2014 redesign + add the collapsed "+ Add Sam"
+   row from `v5-coparent.jsx::V5DetailWhosGoing` (only renders when
+   user has a linked partner).
+7. **Registration handoff sheet** (`v5-handoff.jsx`) \u2014 confirm-then-
+   open-Safari pattern. Persist "I registered" flag locally.
+8. **SavedView** \u2014 straightforward; depends on `store.savedActivityIds`
+   and a `kidId` per saved item.
+9. **CalendarView** \u2014 month strip + day groups. Then add conflict
+   detection (`v5-conflicts.jsx`) + parent-filter bar
+   (`v5-coparent.jsx::V5CalendarByParent`).
+10. **Share / link parents** (`v5-share.jsx`) \u2014 generate / enter code
+    flow, linked settings with load summary
+    (`v5-coparent.jsx::V5LinkedLoad`).
+11. **Why this?** sort transparency (`v5-transparency.jsx`) \u2014 small
+    sheet, low priority but high trust impact.
+12. **Export** \u2014 `.ics` generation utility + Apple Calendar
+    integration via `EventKit`.
+
 ## File map (where each design lives)
 
 | Design file | Implements | Maps to in iOS |
@@ -365,7 +454,15 @@ generated events.
 | `v5-saved.jsx` | Saved tab | `Views/SavedView.swift` (new) + `Views/Components/SavedRow.swift` (new) |
 | `v5-calendar.jsx` | Calendar tab | `Views/CalendarView.swift` (new) + `Views/Components/DayBlock.swift`, `DayEvent.swift` |
 | `v5-detail.jsx` | Activity detail | `Views/ActivityDetailView.swift` (replace contents) |
-| `activities.jsx` | Mock data + helpers | Data already in `Activity.swift`. Helpers (`priceLabel`, `daysLabel`, `ageRangeLabel`) port to a `Formatters` extension. |
+| `v5-onboarding.jsx` | First-launch flow | `Views/Onboarding/WelcomeView.swift`, `AddKidsView.swift`, `LocationView.swift` (new) |
+| `v5-handoff.jsx` | Registration bridge sheet | `Views/RegistrationHandoffSheet.swift` (new) — opens `SFSafariViewController` after confirmation |
+| `v5-empty.jsx` | Empty / cached states | Inline empty views inside Browse / Saved / Calendar; `V5BrowseCached` → cached banner above list |
+| `v5-loading.jsx` | Skeleton shimmer | Redacted-style placeholder views for Browse / Calendar; show during `store.state == .loading` |
+| `v5-share.jsx` | Co-parent invite + linked settings | `Views/Settings/ShareCodeView.swift`, `EnterCodeView.swift`, `LinkedSettingsView.swift` (new) |
+| `v5-conflicts.jsx` | Calendar conflict detection + resolve sheet | Conflict computation in `ActivityStore`; `Views/Calendar/ConflictBadge.swift` and `ResolveConflictSheet.swift` (new) |
+| `v5-transparency.jsx` | Sort transparency overlay | `Views/Browse/WhyThisSheet.swift` (new) — bottom sheet shown from a "Why these?" link near the sort control |
+| `v5-coparent.jsx` | Per-activity parent assignment + filtered Calendar + load summary | `Views/Detail/WhosGoingSection.swift`, `Views/Calendar/ParentFilterBar.swift`, `Views/Settings/LinkedLoadView.swift` (new) |
+| `activities.jsx` | Mock data + helpers | Data already in `Activity.swift`. Helpers (`priceLabel`, `daysLabel`, `ageRangeLabel`) port to a `Formatters` extension. New: `PARENTS`/`Assignment` model. |
 
 ## Top-level navigation
 
@@ -386,24 +483,6 @@ Each tab embeds its own `NavigationStack` so deep-linking into
 `ActivityDetailView` works from any tab.
 
 ## Suggested implementation order
-
-1. **Tokens** — add a `DesignTokens.swift` with `Color` extensions
-   (warmCanvas, warmText, terracotta, sageRegistered) and a
-   `CategoryStyle` lookup. Add `Kid` model + sample data.
-2. **TabView shell** — three tabs, placeholder views.
-3. **BrowseView** — port `v5-hybrid.jsx` row by row. Start with
-   static mock data, then wire to `store.filteredActivities`.
-4. **FilterSheet** rewrite — keep the existing `@Bindable store`
-   pattern, change layout. Add Kids section + age-mode segmented
-   control.
-5. **SavedView** — straightforward; depends on `store.savedActivityIds`
-   and a `kidId` per saved item.
-6. **CalendarView** — month strip + day groups. Use the existing
-   `Formatters` helpers; add a `DateInterval` extension for the
-   day grouping.
-7. **Activity detail** redesign last (lowest priority).
-8. **Export** — `.ics` generation utility + Apple Calendar
-   integration via `EventKit`.
 
 ## Notes
 

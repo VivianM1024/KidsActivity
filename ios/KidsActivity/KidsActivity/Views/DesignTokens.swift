@@ -43,6 +43,23 @@ extension Color {
     // One-time badge (teal)
     static let oneTimeBg        = Color.oklch(0.95, 0.06, 200)
     static let oneTimeText     = Color.oklch(0.40, 0.13, 200)
+
+    // Conflict / warning (amber). Used by Calendar conflict ring + Resolve sheet
+    // and by Why-this transparency.
+    static let amberWarn        = Color.oklch(0.62, 0.14, 70)
+    static let amberWarnSoft    = Color.oklch(0.96, 0.05, 70)
+    static let amberWarnInk     = Color.oklch(0.42, 0.14, 70)
+
+    // Partner (linked co-parent). Cool blue keeps the partner visually distinct
+    // from the user's terracotta. Used by Share / Linked Settings + Calendar
+    // parent chips + Detail "+ Add Sam" row.
+    static let partnerBlue      = Color.oklch(0.55, 0.14, 250)
+    static let partnerBlueSoft  = Color.oklch(0.94, 0.05, 250)
+    static let partnerBlueInk   = Color.oklch(0.40, 0.14, 250)
+
+    // Destructive (Disconnect partner, Cancel one).
+    static let dangerRed        = Color.oklch(0.50, 0.18, 25)
+    static let dangerRedSoft    = Color.oklch(0.95, 0.05, 25)
 }
 
 // Dot-shorthand support for custom colors in `foregroundStyle`, `tint`,
@@ -72,6 +89,14 @@ extension ShapeStyle where Self == Color {
     static var seriesText: Color        { .seriesText }
     static var oneTimeBg: Color         { .oneTimeBg }
     static var oneTimeText: Color       { .oneTimeText }
+    static var amberWarn: Color         { .amberWarn }
+    static var amberWarnSoft: Color     { .amberWarnSoft }
+    static var amberWarnInk: Color      { .amberWarnInk }
+    static var partnerBlue: Color       { .partnerBlue }
+    static var partnerBlueSoft: Color   { .partnerBlueSoft }
+    static var partnerBlueInk: Color    { .partnerBlueInk }
+    static var dangerRed: Color         { .dangerRed }
+    static var dangerRedSoft: Color     { .dangerRedSoft }
 }
 
 extension Color {

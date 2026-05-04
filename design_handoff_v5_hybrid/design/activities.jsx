@@ -535,3 +535,36 @@ Object.assign(window, {
   kidColor, kidById,
   activitySourceUrl, sourceHostLabel,
 });
+
+// ──────────────────────────────────────────────────────────────────────
+// Parents (co-parent assignments).
+// hue is the parent's accent color, used for the avatar and assignment chip.
+// "you" is the local user; "partner" is the linked co-parent.
+// ──────────────────────────────────────────────────────────────────────
+
+const PARENTS = [
+  { id: 'p_you',     name: 'You',     short: 'You',  initial: 'A', hue: 250, role: 'you'     },
+  { id: 'p_partner', name: 'Sam',     short: 'Sam',  initial: 'S', hue: 30,  role: 'partner' },
+];
+
+function parentById(id) { return PARENTS.find((p) => p.id === id); }
+function parentColor(id) { const p = parentById(id); return p ? `oklch(0.6 0.14 ${p.hue})` : '#888'; }
+
+// Assignment value:
+//   { kind: 'both' }                          \u2014 default (family event, both going)
+//   { kind: 'solo', parentId: 'p_you' }       \u2014 one parent takes both kids
+//   { kind: 'split', byKid: { kidA: 'p_you', kidB: 'p_partner' } }
+//                                              \u2014 different parents take different kids
+//                                                 (only meaningful when 2+ kids attend the
+//                                                  same activity at the same time)
+//   { kind: 'unassigned' }                    \u2014 nobody claimed it (rare)
+
+function assignmentLabel(a) {
+  if (!a || a.kind === 'both')       return 'Both';
+  if (a.kind === 'unassigned')       return 'Unassigned';
+  if (a.kind === 'solo')             return parentById(a.parentId)?.short || '\u2014';
+  if (a.kind === 'split')            return 'Split';
+  return '\u2014';
+}
+
+Object.assign(window, { PARENTS, parentById, parentColor, assignmentLabel });

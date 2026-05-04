@@ -1,10 +1,10 @@
 import SwiftUI
-import SafariServices
 
 struct ActivityDetailView: View {
     let activity: Activity
     @Environment(ActivityStore.self) private var store
     @State private var showSafari = false
+    @State private var showHandoff = false
 
     private var category: ActivityCategory { activity.inferredCategory }
     private var status: ActivityStatus { ActivityStatus.compute(for: activity) }
@@ -43,6 +43,12 @@ struct ActivityDetailView: View {
                                 .padding(.horizontal, 20)
                         }
                     }
+                    if store.linkedParent != nil {
+                        section("Who's going?") {
+                            WhosGoingSection(activity: activity)
+                        }
+                    }
+
                     section("Hosted by") {
                         hostCard
                     }
@@ -62,6 +68,9 @@ struct ActivityDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showSafari) {
             SafariView(url: activity.sourceUrl).ignoresSafeArea()
+        }
+        .sheet(isPresented: $showHandoff) {
+            RegistrationHandoffSheet(activity: activity)
         }
     }
 
@@ -450,7 +459,16 @@ struct ActivityDetailView: View {
             .buttonStyle(.plain)
 
             Button {
-                showSafari = true
+                // Open: route through the handoff bridge so the user knows
+                // they're leaving the app and what info they'll need.
+                // Other states (drop-in / opens-soon / full / closed) skip the
+                // bridge — there's nothing to register for, the CTA is just
+                // taking them to the listing.
+                if case .open = status {
+                    showHandoff = true
+                } else {
+                    showSafari = true
+                }
             } label: {
                 HStack(spacing: 8) {
                     VStack(spacing: 2) {
@@ -585,11 +603,5 @@ private struct ShareCircleButton: View {
     }
 }
 
-private struct SafariView: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        SFSafariViewController(url: url)
-    }
-    func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {}
-}
+// SafariView lives in Views/Components/SafariView.swift — shared with
+// CalendarView's Google Calendar export.

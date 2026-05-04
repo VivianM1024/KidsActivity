@@ -2,7 +2,7 @@ import Foundation
 
 struct Manifest: Codable, Hashable {
     let schemaVersion: Int
-    let lastUpdated: Date
+    let lastUpdated: String
     let venueCount: Int
     let activityCount: Int
     let venuesByType: [String: Int]

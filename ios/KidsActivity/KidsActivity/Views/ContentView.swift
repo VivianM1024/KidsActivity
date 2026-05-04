@@ -4,14 +4,24 @@ struct ContentView: View {
     @Environment(ActivityStore.self) private var store
 
     var body: some View {
+        rootScene
+            .fullScreenCover(isPresented: Binding(
+                get: { !store.hasCompletedOnboarding },
+                set: { _ in }
+            )) {
+                OnboardingFlow()
+                    .interactiveDismissDisabled()
+            }
+    }
+
+    @ViewBuilder
+    private var rootScene: some View {
         switch store.state {
         case .idle, .loading:
-            ZStack {
-                Color.warmCanvas.ignoresSafeArea()
-                ProgressView("Loading activities…")
-                    .tint(.terracotta)
-                    .foregroundStyle(.warmTextSecondary)
-            }
+            // Show the Browse skeleton instead of a centered spinner so the
+            // shape of the UI is already in place when the data arrives —
+            // matches `v5-loading.jsx` and avoids a layout pop.
+            BrowseSkeletonView()
         case .ready:
             V5TabView()
         case .error(let msg):

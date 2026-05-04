@@ -20,6 +20,17 @@ struct Kid: Identifiable, Codable, Hashable {
         name: "Nora", ageMonths: 28, hue: 320)
 
     static let samples: [Kid] = [.sampleMaya, .sampleLeo, .sampleNora]
+
+    /// OKLCH hues we cycle through when auto-assigning a color to a new kid
+    /// during onboarding. Order matches the README's category palette so the
+    /// first three kids land on the same hues as the prototype's Maya/Leo/Nora.
+    static let availableHues: [Double] = [22, 250, 320, 145, 200, 60, 290, 130]
+
+    /// Pick the next unused hue from `availableHues`. Cycles if all are taken.
+    static func nextHue(after existing: [Kid]) -> Double {
+        let used = Set(existing.map(\.hue))
+        return availableHues.first { !used.contains($0) } ?? availableHues[existing.count % availableHues.count]
+    }
 }
 
 struct CalendarEvent: Identifiable, Codable, Hashable {
@@ -54,7 +65,7 @@ enum SortMode: String, Codable, CaseIterable, Hashable {
 }
 
 enum ActivityCategory: String, CaseIterable, Codable, Hashable {
-    case sports, arts, stem, events, storytime
+    case sports, arts, stem, events, storytime, music, outdoors
 
     var label: String {
         switch self {
@@ -63,6 +74,8 @@ enum ActivityCategory: String, CaseIterable, Codable, Hashable {
         case .stem:      return "STEM"
         case .events:    return "Events"
         case .storytime: return "Storytime"
+        case .music:     return "Music"
+        case .outdoors:  return "Outdoors"
         }
     }
 
@@ -73,6 +86,8 @@ enum ActivityCategory: String, CaseIterable, Codable, Hashable {
         case .stem:      return "STE"
         case .events:    return "EVT"
         case .storytime: return "STO"
+        case .music:     return "MUS"
+        case .outdoors:  return "OUT"
         }
     }
 
@@ -80,10 +95,12 @@ enum ActivityCategory: String, CaseIterable, Codable, Hashable {
     var hue: Double {
         switch self {
         case .sports:    return 22
-        case .arts:      return 320
+        case .arts:      return 290
         case .stem:      return 200
         case .events:    return 145
         case .storytime: return 60
+        case .music:     return 320
+        case .outdoors:  return 130
         }
     }
 
@@ -97,17 +114,23 @@ enum ActivityCategory: String, CaseIterable, Codable, Hashable {
             haystacks.contains { h in needles.contains { h.contains($0) } }
         }
 
-        if anyOf([raw], ["sport", "aquat", "swim", "camp"]) { return .sports }
-        if anyOf([raw], ["story", "read"])                  { return .storytime }
-        if anyOf([raw], ["stem", "science", "tech", "robot", "engineer"]) { return .stem }
-        if anyOf([raw], ["art", "music", "dance", "theater", "theatre"])  { return .arts }
-        if anyOf([raw], ["event", "festival", "family", "outdoor"])       { return .events }
+        // Order matters: more-specific keywords (music, outdoors) win over the
+        // older catch-all .arts / .events buckets.
+        if anyOf([raw], ["music", "band", "choir", "orchestra"])           { return .music }
+        if anyOf([raw], ["outdoor", "hike", "nature", "garden", "trail"])  { return .outdoors }
+        if anyOf([raw], ["sport", "aquat", "swim", "camp"])                { return .sports }
+        if anyOf([raw], ["story", "read"])                                 { return .storytime }
+        if anyOf([raw], ["stem", "science", "tech", "robot", "engineer"])  { return .stem }
+        if anyOf([raw], ["art", "paint", "draw", "dance", "theater", "theatre"]) { return .arts }
+        if anyOf([raw], ["event", "festival", "family"])                   { return .events }
 
+        if anyOf([name], ["music", "band", "choir", "orchestra", "guitar", "piano", "drum"]) { return .music }
+        if anyOf([name], ["outdoor", "hike", "nature", "garden", "trail", "forest"])         { return .outdoors }
         if anyOf([name], ["soccer", "football", "ball", "hockey", "swim",
                           "tennis", "yoga", "fitness", "karate", "gym"]) { return .sports }
         if anyOf([name], ["lego", "robot", "code", "stem", "rocket", "science"]) { return .stem }
         if anyOf([name], ["story", "read", "book"])                              { return .storytime }
-        if anyOf([name], ["art", "paint", "draw", "music", "dance", "ballet",
+        if anyOf([name], ["art", "paint", "draw", "dance", "ballet",
                           "theater", "theatre"])                                  { return .arts }
 
         if let n = a.schedule.numSessions, n <= 1 { return .events }

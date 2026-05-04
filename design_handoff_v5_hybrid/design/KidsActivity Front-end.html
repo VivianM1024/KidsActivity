@@ -27,6 +27,14 @@
 <script type="text/babel" src="v5-detail.jsx"></script>
 <script type="text/babel" src="v5-saved.jsx"></script>
 <script type="text/babel" src="v5-calendar.jsx"></script>
+<script type="text/babel" src="v5-onboarding.jsx"></script>
+<script type="text/babel" src="v5-handoff.jsx"></script>
+<script type="text/babel" src="v5-empty.jsx"></script>
+<script type="text/babel" src="v5-loading.jsx"></script>
+<script type="text/babel" src="v5-share.jsx"></script>
+<script type="text/babel" src="v5-conflicts.jsx"></script>
+<script type="text/babel" src="v5-transparency.jsx"></script>
+<script type="text/babel" src="v5-coparent.jsx"></script>
 
 <script type="text/babel">
 const { useState } = React;
@@ -38,6 +46,16 @@ function Phone({ children, dark = false }) {
       {children}
     </IOSDevice>
   );
+}
+
+// Demo wrapper that mounts V5Onboarding at a specific step so the design
+// canvas can show steps 2 and 3 without forcing a reviewer to fill step 1.
+function V5OnboardingAtStep({ step }) {
+  return <V5Onboarding key={step} initialStep={step} initialNames={['Maya', 'Leo']}/>;
+}
+
+function V5OnboardingFilledDemo() {
+  return <V5Onboarding initialNames={['Maya', '']}/>;
 }
 
 function Intro() {
@@ -76,6 +94,15 @@ function App() {
       </DCSection>
 
       <DCSection id="v5" title="★ Hybrid · 1 + 2" subtitle="Browse → Filter → Detail. Warm cards, dense rows, real flow.">
+        <DCArtboard id="v5-onb-1" label="Onboarding · Kids" width={390} height={844}>
+          <Phone><V5Onboarding/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-onb-2" label="Onboarding · Location" width={390} height={844}>
+          <Phone><V5OnboardingAtStep step={1}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-onb-3" label="Onboarding · Days" width={390} height={844}>
+          <Phone><V5OnboardingAtStep step={2}/></Phone>
+        </DCArtboard>
         <DCArtboard id="v5-home" label="Browse" width={390} height={844}>
           <Phone><V5Hybrid activities={A}/></Phone>
         </DCArtboard>
@@ -91,12 +118,66 @@ function App() {
         <DCArtboard id="v5-calendar" label="Calendar" width={390} height={844}>
           <Phone><V5Calendar activities={A}/></Phone>
         </DCArtboard>
+        <DCArtboard id="v5-handoff" label="Register · Handoff sheet" width={390} height={844}>
+          <Phone><V5RegHandoff activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-loading-browse" label="Loading · Browse" width={390} height={844}>
+          <Phone><V5LoadingBrowse/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-loading-cal" label="Loading · Calendar" width={390} height={844}>
+          <Phone><V5LoadingCalendar/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-empty-browse" label="Empty · Browse (no matches)" width={390} height={844}>
+          <Phone><V5EmptyBrowse/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-empty-saved" label="Empty · Saved" width={390} height={844}>
+          <Phone><V5EmptySaved/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-empty-cal" label="Empty · Calendar" width={390} height={844}>
+          <Phone><V5EmptyCalendar/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-cached" label="Browse · Cached banner" width={390} height={844}>
+          <Phone><V5BrowseCached activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-why" label="Why this? · Sort transparency" width={390} height={844}>
+          <Phone><V5WhyThis/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-share" label="Share · Generate code" width={390} height={844}>
+          <Phone><V5ShareCode/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-enter" label="Share · Enter code" width={390} height={844}>
+          <Phone><V5EnterCode state="preview"/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-enter-empty" label="Share · Enter (empty)" width={390} height={844}>
+          <Phone><V5EnterCode state="empty"/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-linked" label="Share · Linked state" width={390} height={844}>
+          <Phone><V5LinkedSettings/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-cal-conflict" label="Calendar \u00b7 with conflict" width={390} height={844}>
+          <Phone><V5CalendarConflicts activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-conflict-sheet" label="Conflict \u00b7 resolve sheet" width={390} height={844}>
+          <Phone><V5ConflictSheet activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-whos-going" label="Detail \u00b7 Who\u2019s going" width={390} height={844}>
+          <Phone><V5DetailWhosGoing/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-cal-byparent" label="Calendar \u00b7 by parent" width={390} height={844}>
+          <Phone><V5CalendarByParent activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-linked-load" label="Settings \u00b7 Linked + load" width={390} height={844}>
+          <Phone><V5LinkedLoad/></Phone>
+        </DCArtboard>
+        <DCPostIt top={520} left={1280} rotate={1.5}>
+          Co-parent is opt-in. Detail page defaults to a collapsed "+ Add Sam" ghost row — single-parent users never see the picker. Calendar shows no chips and no filter strip until at least one event is assigned. Three modes once expanded: Both go / Just Sam / Split kids — the Split case is the killer feature for same-time-different-venue conflicts.
+        </DCPostIt>
         <DCPostIt top={20} left={1280} rotate={-1.5}>
           Three-screen flow. Browse keeps everything on one row; the filter sheet absorbs the long-tail controls (age, distance, date range, price, status, multi-select venue & category); detail commits to the category color, surfaces the full session schedule for series, and keeps the register CTA pinned.
         </DCPostIt>
       </DCSection>
 
-      <DCSection id="v1" title="1 · Native polish" subtitle="SwiftUI list + always-visible chip filters. Lowest risk, ships next sprint.">
+      <DCSection id="v1" title="1 · Native polish" subtitle="Explored, parked. Lowest-risk direction — kept here as reference.">
         <DCArtboard id="v1-home" label="Browse" width={390} height={844}>
           <Phone><V1Native activities={A}/></Phone>
         </DCArtboard>
@@ -105,7 +186,7 @@ function App() {
         </DCPostIt>
       </DCSection>
 
-      <DCSection id="v2" title="2 · Warm card browse" subtitle="Friendlier visual, color-per-category, tab bar. For the parent who scans visually.">
+      <DCSection id="v2" title="2 · Warm card browse" subtitle="Explored, parked. Visual ideas merged into the ★ Hybrid direction above.">
         <DCArtboard id="v2-home" label="Browse" width={390} height={844}>
           <Phone><V2Cards activities={A}/></Phone>
         </DCArtboard>
@@ -114,7 +195,7 @@ function App() {
         </DCPostIt>
       </DCSection>
 
-      <DCSection id="v3" title="3 · Calendar planner" subtitle={'Week-strip first. Best fit for "what\'s good Saturday?" — the #1 parent JTBD.'}>
+      <DCSection id="v3" title="3 · Calendar planner" subtitle="Explored, parked. Calendar-first thinking influenced the Calendar tab in V5.">
         <DCArtboard id="v3-home" label="This week" width={390} height={844}>
           <Phone><V3Calendar activities={A}/></Phone>
         </DCArtboard>
@@ -123,7 +204,7 @@ function App() {
         </DCPostIt>
       </DCSection>
 
-      <DCSection id="v4" title="4 · For You editorial" subtitle="Kid profile front-and-center. Magazine-style sections, urgency cues, fewer choices.">
+      <DCSection id="v4" title="4 · For You editorial" subtitle="Explored, parked. Kid-centered framing kept; editorial type pushed too far for v1.">
         <DCArtboard id="v4-home" label="For You" width={390} height={844}>
           <Phone><V4ForYou activities={A}/></Phone>
         </DCArtboard>

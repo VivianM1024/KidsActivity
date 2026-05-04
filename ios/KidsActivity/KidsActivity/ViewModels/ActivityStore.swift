@@ -22,19 +22,34 @@ final class ActivityStore {
     var activities: [Activity] = []
     var filters: ActivityFilters = .default
 
-    // Household / personalization
-    var kids: [Kid] = Kid.samples
-    var selectedKidIds: Set<UUID> = [Kid.sampleMaya.id]
+    // Household / personalization. Empty by default — onboarding is what
+    // populates these. Existing installs that already have data persisted
+    // get auto-marked as onboarded in `loadPersistedState()`.
+    var kids: [Kid] = []
+    var selectedKidIds: Set<UUID> = []
 
     var savedActivityIds: Set<String> = []
     var registeredActivityIds: Set<String> = []
     var calendarEvents: [CalendarEvent] = []
 
+    // Co-parent (opt-in). When `linkedParent` is nil we hide every co-parent
+    // surface (filter bar, "+ Add Sam" row, parent chips). Once set, a parent
+    // chip on Calendar appears only for events that have an explicit
+    // assignment — unassigned events stay neutral.
+    var linkedParent: LinkedParent? = nil
+    var assignments: [Assignment] = []
+
     var sortMode: SortMode = .when
     var searchText: String = ""
 
-    /// Logan Square, Chicago — the prototype's hardcoded "home" location.
-    /// Once a real location service lands, replace this with the user's pin.
+    // Onboarding gate + the home address it captures.
+    var hasCompletedOnboarding: Bool = false
+    var homeZIP: String = ""
+    var homeNeighborhood: String = ""
+    var weeklyAvailability: Set<ActivityFilters.DayOfWeek> = []
+
+    /// Logan Square, Chicago — the prototype's hardcoded fallback. Onboarding
+    /// overwrites this with the user's geocoded ZIP or location fix.
     var homeCoordinate: CLLocationCoordinate2D = .init(latitude: 41.929, longitude: -87.706)
 
     private let loader = DataLoader()
@@ -86,10 +101,12 @@ final class ActivityStore {
         return matchKids(for: activity).first ?? kids.first
     }
 
-    /// Kids whose age falls within the activity's age range (±3 months window).
+    /// Kids whose age falls within the activity's age range (±1 year window).
+    /// The wider window matches the README's "±1y" match-dot spec: a 4-year-old
+    /// will register a match for a "ages 3–5" class.
     func matchKids(for a: Activity) -> [Kid] {
-        let lo = a.ageRange.minMonths.map { max(0, $0 - 3) } ?? 0
-        let hi = a.ageRange.maxMonths.map { $0 + 3 } ?? 10_000
+        let lo = a.ageRange.minMonths.map { max(0, $0 - 12) } ?? 0
+        let hi = a.ageRange.maxMonths.map { $0 + 12 } ?? 10_000
         return selectedKids.filter { $0.ageMonths >= lo && $0.ageMonths <= hi }
     }
 
@@ -115,12 +132,25 @@ final class ActivityStore {
     /// launch before the first render so the UI reflects last session.
     func loadPersistedState() {
         let snap = persistence.load()
-        if !snap.kids.isEmpty { self.kids = snap.kids }
-        if !snap.selectedKidIds.isEmpty { self.selectedKidIds = snap.selectedKidIds }
+        self.kids = snap.kids
+        self.selectedKidIds = snap.selectedKidIds
         self.savedActivityIds = snap.savedActivityIds
         self.registeredActivityIds = snap.registeredActivityIds
         self.savedKidByActivity = snap.savedKidByActivity
         self.calendarEvents = snap.calendarEvents
+        self.weeklyAvailability = snap.weeklyAvailability
+        self.homeZIP = snap.homeZIP
+        self.homeNeighborhood = snap.homeNeighborhood
+        if let lat = snap.homeLat, let lon = snap.homeLon {
+            self.homeCoordinate = .init(latitude: lat, longitude: lon)
+        }
+        self.linkedParent = snap.linkedParent
+        self.assignments = snap.assignments
+        // Pre-onboarding installs already had data — treat that as onboarded
+        // so they don't see the flow on next launch.
+        self.hasCompletedOnboarding = snap.hasCompletedOnboarding
+            || !snap.kids.isEmpty
+            || !snap.savedActivityIds.isEmpty
     }
 
     private func persist() {
@@ -130,8 +160,184 @@ final class ActivityStore {
             savedActivityIds: savedActivityIds,
             registeredActivityIds: registeredActivityIds,
             savedKidByActivity: savedKidByActivity,
-            calendarEvents: calendarEvents
+            calendarEvents: calendarEvents,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            homeZIP: homeZIP,
+            homeNeighborhood: homeNeighborhood,
+            homeLat: homeCoordinate.latitude,
+            homeLon: homeCoordinate.longitude,
+            weeklyAvailability: weeklyAvailability,
+            linkedParent: linkedParent,
+            assignments: assignments
         ))
+    }
+
+    // MARK: - Co-parent
+
+    var hasAnyAssignment: Bool { !assignments.isEmpty }
+
+    /// "You" identity. Built fresh each access since it doesn't carry state
+    /// beyond the user's choice of name (and we just hardcode "You" today).
+    var selfParent: Parent { .defaultYou }
+
+    /// Resolve assignment for an activity, optionally a specific session date.
+    /// Session-specific overrides win; activity-level default is the fallback.
+    func assignment(for activityId: String, on date: Date? = nil) -> Assignment? {
+        if let date {
+            let session = assignments.first { a in
+                guard a.activityId == activityId, let s = a.sessionDate else { return false }
+                return Calendar.current.isDate(s, inSameDayAs: date)
+            }
+            if let session { return session }
+        }
+        return assignments.first { $0.activityId == activityId && $0.sessionDate == nil }
+    }
+
+    func setAssignment(_ kind: AssignmentKind, for activityId: String, on date: Date? = nil) {
+        let new = Assignment(activityId: activityId, sessionDate: date, kind: kind)
+        // Replace any existing assignment for this (activity, sessionDate) tuple.
+        assignments.removeAll { existing in
+            existing.activityId == activityId &&
+            (existing.sessionDate?.timeIntervalSince1970 == date?.timeIntervalSince1970)
+        }
+        assignments.append(new)
+        persist()
+    }
+
+    func clearAssignment(for activityId: String, on date: Date? = nil) {
+        assignments.removeAll { a in
+            a.activityId == activityId &&
+            (a.sessionDate?.timeIntervalSince1970 == date?.timeIntervalSince1970)
+        }
+        persist()
+    }
+
+    func linkPartner(_ partner: Parent, code: String) {
+        linkedParent = LinkedParent(partner: partner, inviteCode: code, linkedAt: Date())
+        persist()
+    }
+
+    /// Unlinks the partner and clears every assignment — assignments
+    /// reference the partner's UUID, so leaving them dangling would render
+    /// nothing on screen.
+    func unlinkPartner() {
+        linkedParent = nil
+        assignments.removeAll()
+        persist()
+    }
+
+    // MARK: - Conflicts
+
+    /// A pair of overlapping events on the same day. Two events conflict
+    /// when their time windows intersect. Conflicts are computed lazily —
+    /// no persisted state.
+    struct Conflict: Hashable, Identifiable {
+        let id: String           // dayKey:eventA:eventB
+        let dayKey: String       // "yyyy-MM-dd"
+        let primary: CalendarEvent
+        let secondary: CalendarEvent
+        let overlapMinutes: Int
+    }
+
+    /// Returns conflicts whose events fall on `date` (start-of-day match).
+    func conflicts(on date: Date) -> [Conflict] {
+        let cal = Calendar(identifier: .iso8601)
+        let dayKey = isoKey(cal.startOfDay(for: date))
+        let dayEvents = calendarEvents.filter {
+            isoKey(cal.startOfDay(for: $0.date)) == dayKey
+        }
+        return findConflicts(in: dayEvents, dayKey: dayKey)
+    }
+
+    /// Set of `yyyy-MM-dd` keys for every day that has at least one conflict
+    /// among the upcoming events. Used by the Calendar month-strip ring.
+    var conflictDayKeys: Set<String> {
+        let cal = Calendar(identifier: .iso8601)
+        let buckets = Dictionary(grouping: calendarEvents) {
+            isoKey(cal.startOfDay(for: $0.date))
+        }
+        var out: Set<String> = []
+        for (key, list) in buckets where !findConflicts(in: list, dayKey: key).isEmpty {
+            out.insert(key)
+        }
+        return out
+    }
+
+    private func findConflicts(in events: [CalendarEvent], dayKey: String) -> [Conflict] {
+        guard events.count >= 2 else { return [] }
+        let sorted = events.sorted { $0.date < $1.date }
+        var conflicts: [Conflict] = []
+        for i in 0..<sorted.count {
+            for j in (i+1)..<sorted.count {
+                let a = sorted[i], b = sorted[j]
+                let aEnd = a.date.addingTimeInterval(TimeInterval(a.durationMinutes * 60))
+                let bEnd = b.date.addingTimeInterval(TimeInterval(b.durationMinutes * 60))
+                if a.date < bEnd && b.date < aEnd {
+                    let overlapStart = max(a.date, b.date)
+                    let overlapEnd = min(aEnd, bEnd)
+                    let mins = Int(overlapEnd.timeIntervalSince(overlapStart) / 60.0)
+                    conflicts.append(Conflict(
+                        id: "\(dayKey):\(a.id):\(b.id)",
+                        dayKey: dayKey, primary: a, secondary: b,
+                        overlapMinutes: max(1, mins)
+                    ))
+                }
+            }
+        }
+        return conflicts
+    }
+
+    private func isoKey(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        return f.string(from: date)
+    }
+
+    /// This week's events broken down by who's responsible. Used by the
+    /// LinkedLoadView "load summary" card.
+    func loadSummaryThisWeek() -> (you: Int, partner: Int, both: Int) {
+        let cal = Calendar(identifier: .iso8601)
+        let now = Date()
+        guard let weekInterval = cal.dateInterval(of: .weekOfYear, for: now) else {
+            return (0, 0, 0)
+        }
+        var you = 0, partner = 0, both = 0
+        for e in calendarEvents where weekInterval.contains(e.date) {
+            guard let a = assignment(for: e.activityId, on: e.date) else { continue }
+            switch a.kind {
+            case .both: both += 1
+            case .solo(let pid):
+                if pid == selfParent.id { you += 1 }
+                else { partner += 1 }
+            case .split(let m):
+                if m[e.kidId] == selfParent.id { you += 1 }
+                else if m[e.kidId] != nil { partner += 1 }
+            }
+        }
+        return (you, partner, both)
+    }
+
+    // MARK: - Onboarding
+
+    func completeOnboarding(
+        kids: [Kid],
+        zip: String,
+        neighborhood: String,
+        coordinate: CLLocationCoordinate2D?,
+        availability: Set<ActivityFilters.DayOfWeek>
+    ) {
+        self.kids = kids
+        self.selectedKidIds = Set(kids.map(\.id))
+        self.homeZIP = zip
+        self.homeNeighborhood = neighborhood
+        if let coordinate { self.homeCoordinate = coordinate }
+        self.weeklyAvailability = availability
+        // Seed the day-of-week filter with the user's stated availability so
+        // Browse opens with relevant rows on day one.
+        self.filters.daysOfWeek = availability
+        self.hasCompletedOnboarding = true
+        persist()
     }
 
     // MARK: - User actions
@@ -286,6 +492,14 @@ private struct StoreSnapshot: Codable {
     var registeredActivityIds: Set<String> = []
     var savedKidByActivity: [String: UUID] = [:]
     var calendarEvents: [CalendarEvent] = []
+    var hasCompletedOnboarding: Bool = false
+    var homeZIP: String = ""
+    var homeNeighborhood: String = ""
+    var homeLat: Double? = nil
+    var homeLon: Double? = nil
+    var weeklyAvailability: Set<ActivityFilters.DayOfWeek> = []
+    var linkedParent: LinkedParent? = nil
+    var assignments: [Assignment] = []
 }
 
 private final class StorePersistence {
