@@ -253,5 +253,26 @@
     "sitecode": null,
     "amilia_org_slug": "cityofevanston",
     "custom_config": null
+  },
+  {
+    "slug": "glenviewpl",
+    "name": "Glenview Public Library",
+    "venue_type": "library",
+    "platform": "biblio_commons",
+    "base_url": "https://glenviewpl.bibliocommons.com/",
+    "search_url": null,
+    "center_lat": 42.0697,
+    "center_lon": -87.7878,
+    "served_zipcodes": [],
+    "aliases": [],
+    "sitecode": null,
+    "amilia_org_slug": null,
+    "custom_config": {
+      "audience_ids": [
+        "630f73dc96317542000ec2f0",
+        "630f73c92f32903000449b34",
+        "62cedbbea627452f0046a67c"
+      ]
+    }
   }
 ]
