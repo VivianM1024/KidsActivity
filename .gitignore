@@ -21,6 +21,10 @@ xcuserdata/
 DerivedData/
 build/
 
+# XcodeGen output — regenerated from ios/project.yml via `xcodegen generate`
+ios/KidsActivity.xcodeproj/
+ios/KidsActivity/Info.plist
+
 # Local cache for HTTP/LLM responses (never commit)
 .kidsactivity-cache/
 

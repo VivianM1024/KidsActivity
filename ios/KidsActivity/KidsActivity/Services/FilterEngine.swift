@@ -1,7 +1,7 @@
 import Foundation
 import CoreLocation
 
-struct ActivityFilters: Equatable {
+struct ActivityFilters {
     var venueTypes: Set<VenueType> = Set(VenueType.allCases)
     var ageMinMonths: Int? = nil
     var ageMaxMonths: Int? = nil

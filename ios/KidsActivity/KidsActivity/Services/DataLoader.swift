@@ -118,6 +118,11 @@ extension JSONDecoder {
             if let dt = isoFormatter.date(from: raw) ?? isoFractional.date(from: raw) {
                 return dt
             }
+            // Pydantic emits naive datetimes (no timezone) for fields like
+            // Registration.opens_at — e.g. "2025-11-17T00:00:00". Treat as UTC.
+            if let dt = naiveDatetime.date(from: raw) ?? naiveDatetimeFractional.date(from: raw) {
+                return dt
+            }
             if let day = ymdFormatter.date(from: raw) {
                 return day
             }
@@ -147,5 +152,23 @@ private let ymdFormatter: DateFormatter = {
     f.calendar = Calendar(identifier: .iso8601)
     f.timeZone = TimeZone(secondsFromGMT: 0)
     f.dateFormat = "yyyy-MM-dd"
+    return f
+}()
+
+private let naiveDatetime: DateFormatter = {
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .iso8601)
+    f.timeZone = TimeZone(secondsFromGMT: 0)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+    return f
+}()
+
+private let naiveDatetimeFractional: DateFormatter = {
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .iso8601)
+    f.timeZone = TimeZone(secondsFromGMT: 0)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
     return f
 }()

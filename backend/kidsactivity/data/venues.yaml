@@ -166,18 +166,50 @@ venues:
     center_lon: -87.6877
 
   # ============================================================
-  # Libraries (stubbed — fill in URLs when the scrapers ship)
-  # Uncomment and complete once biblio_commons/library_calendar/communico
-  # scrapers are implemented.
+  # Libraries
   # ============================================================
+  # Glenview Public Library — BiblioCommons v2.
+  # The audience_ids below are tenant-specific MongoDB IDs surfaced by the
+  # /v2/events page when you click an audience filter; lift them from the
+  # ?audiences= query string on the public events page.
+  - slug: glenviewpl
+    name: Glenview Public Library
+    venue_type: library
+    platform: biblio_commons
+    base_url: https://glenviewpl.bibliocommons.com/
+    center_lat: 42.0697
+    center_lon: -87.7878
+    custom_config:
+      audience_ids:
+        - "630f73dc96317542000ec2f0"  # Birth to 5
+        - "630f73c92f32903000449b34"  # Kids (Grades K-8)
+        - "62cedbbea627452f0046a67c"  # Teens (Grades 9-12)
+
+  # Skokie Public Library uses LibCal/Springshare (NOT BiblioCommons) for
+  # events; needs a different scraper. Stubbed here for follow-up.
   # - slug: skokielibrary
   #   name: Skokie Public Library
   #   venue_type: library
-  #   platform: biblio_commons
-  #   base_url: https://skokielibrary.bibliocommons.com/
+  #   platform: libcal  # not yet implemented
+  #   base_url: https://www.skokielibrary.info/
   #   center_lat: 42.0334
   #   center_lon: -87.7334
   #
+  # Winnetka-Northfield uses a custom CMS — needs custom_html config.
+  # - slug: wnpld
+  #   name: Winnetka-Northfield Public Library District
+  #   venue_type: library
+  #   platform: custom_html
+  #   base_url: https://www.wnpld.org/
+  #   center_lat: 42.1081
+  #   center_lon: -87.7356
+  #   custom_config:
+  #     listing_url: https://www.wnpld.org/events/upcoming
+  #     item_selector: "h3"
+  #     fields: { name: "a", url: "a@href" }
+  #
+  # Evanston Public Library — when on BiblioCommons, copy the Glenview
+  # block and look up Evanston's audience UUIDs.
   # - slug: epl
   #   name: Evanston Public Library
   #   venue_type: library
@@ -185,20 +217,16 @@ venues:
   #   base_url: https://epl.bibliocommons.com/
   #   center_lat: 42.0451
   #   center_lon: -87.6877
+  #   custom_config:
+  #     audience_ids: ["...", "...", "..."]
   #
-  # - slug: glenviewpl
-  #   name: Glenview Public Library
-  #   venue_type: library
-  #   platform: library_calendar
-  #   base_url: https://www.glenviewpl.org/
-  #   center_lat: 42.0697
-  #   center_lon: -87.7878
-  #
+  # Northbrook Public Library — Communico (visit.northbrook.info), needs
+  # CommunicoScraper which is still a stub.
   # - slug: northbrookpl
   #   name: Northbrook Public Library
   #   venue_type: library
   #   platform: communico
-  #   base_url: https://www.northbrook.info/
+  #   base_url: https://visit.northbrook.info/
   #   center_lat: 42.1275
   #   center_lon: -87.8290
 
