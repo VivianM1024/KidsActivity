@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KidsActivity — Front-end exploration</title>
+<style>
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="activities.jsx"></script>
+<script type="text/babel" src="v1-native.jsx"></script>
+<script type="text/babel" src="v2-cards.jsx"></script>
+<script type="text/babel" src="v3-calendar.jsx"></script>
+<script type="text/babel" src="v4-foryou.jsx"></script>
+<script type="text/babel" src="v5-hybrid.jsx"></script>
+<script type="text/babel" src="v5-filter.jsx"></script>
+<script type="text/babel" src="v5-detail.jsx"></script>
+<script type="text/babel" src="v5-saved.jsx"></script>
+<script type="text/babel" src="v5-calendar.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+// Wrap a screen in an iPhone bezel so each artboard reads as a real phone.
+function Phone({ children, dark = false }) {
+  return (
+    <IOSDevice width={390} height={844} dark={dark}>
+      {children}
+    </IOSDevice>
+  );
+}
+
+function Intro() {
+  return (
+    <div style={{
+      width: 460, padding: '32px 36px',
+      fontFamily: '-apple-system, system-ui',
+      color: '#2a251f', lineHeight: 1.55, fontSize: 14.5,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'rgba(60,50,40,0.55)' }}>
+        Front-end design — KidsActivity
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.4, margin: '6px 0 14px' }}>
+        Four directions for a Chicago-area parent
+      </div>
+      <p style={{ margin: '0 0 12px' }}>
+        The current SwiftUI app is a flat <code>List</code> with a hidden <code>FilterSheet</code>.
+        It works but it's not opinionated about the actual job: a parent has a
+        kid, sometime soon, and wants to find something good. Below are four
+        directions that lean on that job differently.
+      </p>
+      <p style={{ margin: '0 0 8px' }}><strong>System.</strong> SF Pro/system stack. Warm neutral base. Each direction commits to one accent. Real activity data from <code>docs/data/activities.json</code>.</p>
+      <p style={{ margin: '0 0 0' }}><strong>How to read this.</strong> Click any artboard to focus it. Drag the grip to reorder. Pan the canvas with two fingers, pinch to zoom.</p>
+    </div>
+  );
+}
+
+function App() {
+  const A = window.ACTIVITIES;
+  return (
+    <DesignCanvas>
+      <DCSection id="intro" title="Read me first" subtitle="System notes & how I'm thinking about this">
+        <DCArtboard id="notes" label="Notes" width={460} height={300} style={{ background: '#fff' }}>
+          <Intro/>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="v5" title="★ Hybrid · 1 + 2" subtitle="Browse → Filter → Detail. Warm cards, dense rows, real flow.">
+        <DCArtboard id="v5-home" label="Browse" width={390} height={844}>
+          <Phone><V5Hybrid activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-filter" label="Filter sheet" width={390} height={844}>
+          <Phone><V5FilterSheet/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-detail" label="Activity detail" width={390} height={844}>
+          <Phone><V5Detail activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-saved" label="Saved" width={390} height={844}>
+          <Phone><V5Saved activities={A}/></Phone>
+        </DCArtboard>
+        <DCArtboard id="v5-calendar" label="Calendar" width={390} height={844}>
+          <Phone><V5Calendar activities={A}/></Phone>
+        </DCArtboard>
+        <DCPostIt top={20} left={1280} rotate={-1.5}>
+          Three-screen flow. Browse keeps everything on one row; the filter sheet absorbs the long-tail controls (age, distance, date range, price, status, multi-select venue & category); detail commits to the category color, surfaces the full session schedule for series, and keeps the register CTA pinned.
+        </DCPostIt>
+      </DCSection>
+
+      <DCSection id="v1" title="1 · Native polish" subtitle="SwiftUI list + always-visible chip filters. Lowest risk, ships next sprint.">
+        <DCArtboard id="v1-home" label="Browse" width={390} height={844}>
+          <Phone><V1Native activities={A}/></Phone>
+        </DCArtboard>
+        <DCPostIt top={20} left={420} rotate={2}>
+          Same bones as today's app — just promotes filters to chips and adds a category swatch + Open pill so the row carries more meaning at a glance.
+        </DCPostIt>
+      </DCSection>
+
+      <DCSection id="v2" title="2 · Warm card browse" subtitle="Friendlier visual, color-per-category, tab bar. For the parent who scans visually.">
+        <DCArtboard id="v2-home" label="Browse" width={390} height={844}>
+          <Phone><V2Cards activities={A}/></Phone>
+        </DCArtboard>
+        <DCPostIt top={20} left={420} rotate={-2}>
+          Each card commits to its category with a colored header. The age chip in the search field is the persistent kid context — tap to change.
+        </DCPostIt>
+      </DCSection>
+
+      <DCSection id="v3" title="3 · Calendar planner" subtitle={'Week-strip first. Best fit for "what\'s good Saturday?" — the #1 parent JTBD.'}>
+        <DCArtboard id="v3-home" label="This week" width={390} height={844}>
+          <Phone><V3Calendar activities={A}/></Phone>
+        </DCArtboard>
+        <DCPostIt top={20} left={420} rotate={1}>
+          Most opinionated direction. Browsing a catalog is reframed as planning a day. Time-gutter and category accent on the left edge of each card.
+        </DCPostIt>
+      </DCSection>
+
+      <DCSection id="v4" title="4 · For You editorial" subtitle="Kid profile front-and-center. Magazine-style sections, urgency cues, fewer choices.">
+        <DCArtboard id="v4-home" label="For You" width={390} height={844}>
+          <Phone><V4ForYou activities={A}/></Phone>
+        </DCArtboard>
+        <DCPostIt top={20} left={420} rotate={-1}>
+          Uses the optional kid profile to do the filtering for you. Serif display type for the editorial feel; sections nudge urgency ("opens this week") and value ("free near you").
+        </DCPostIt>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

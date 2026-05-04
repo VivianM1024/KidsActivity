@@ -8,7 +8,10 @@ struct KidsActivityApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
-                .task { await store.load() }
+                .task {
+                    store.loadPersistedState()
+                    await store.load()
+                }
         }
     }
 }

@@ -2,44 +2,52 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(ActivityStore.self) private var store
-    @State private var showFilters = false
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch store.state {
-                case .idle, .loading:
-                    ProgressView("Loading activities…")
-                case .ready:
-                    ActivityListView()
-                case .error(let msg):
-                    ContentUnavailableView(
-                        "Couldn't load data",
-                        systemImage: "wifi.exclamationmark",
-                        description: Text(msg)
-                    )
-                }
+        switch store.state {
+        case .idle, .loading:
+            ZStack {
+                Color.warmCanvas.ignoresSafeArea()
+                ProgressView("Loading activities…")
+                    .tint(.terracotta)
+                    .foregroundStyle(.warmTextSecondary)
             }
-            .navigationTitle("Kids Activities")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showFilters = true } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                    }
-                    .accessibilityLabel("Filters")
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        Task { await store.refresh() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .accessibilityLabel("Refresh")
-                }
-            }
-            .sheet(isPresented: $showFilters) {
-                FilterSheet()
+        case .ready:
+            V5TabView()
+        case .error(let msg):
+            ZStack {
+                Color.warmCanvas.ignoresSafeArea()
+                ContentUnavailableView(
+                    "Couldn't load data",
+                    systemImage: "wifi.exclamationmark",
+                    description: Text(msg)
+                )
             }
         }
+    }
+}
+
+private struct V5TabView: View {
+    var body: some View {
+        TabView {
+            NavigationStack {
+                BrowseView()
+                    .navigationDestination(for: Activity.self) { ActivityDetailView(activity: $0) }
+            }
+            .tabItem { Label("Browse", systemImage: "magnifyingglass") }
+
+            NavigationStack {
+                SavedView()
+                    .navigationDestination(for: Activity.self) { ActivityDetailView(activity: $0) }
+            }
+            .tabItem { Label("Saved", systemImage: "bookmark") }
+
+            NavigationStack {
+                CalendarView()
+                    .navigationDestination(for: Activity.self) { ActivityDetailView(activity: $0) }
+            }
+            .tabItem { Label("Calendar", systemImage: "calendar") }
+        }
+        .tint(.terracotta)
     }
 }
