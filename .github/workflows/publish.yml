@@ -55,4 +55,16 @@ jobs:
             exit 0
           fi
           git commit -m "Weekly data refresh ($(date -u +%Y-%m-%d))"
-          git push
+          # If a concurrent run pushed in the meantime (e.g. manual dispatch
+          # finishing after the scheduled run started), rebase on top of it
+          # before pushing. The JSON we just regenerated supersedes whatever
+          # data they wrote.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt) — pulling and retrying."
+            git pull --rebase --autostash origin main
+          done
+          echo "Failed to push after 3 rebase attempts." >&2
+          exit 1
