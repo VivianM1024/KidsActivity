@@ -205,7 +205,8 @@ class BiblioCommonsScraper(BaseScraper):
 
         # Title: prefer h3 inside the card, fall back to the anchor text.
         title_el = card.find(["h3", "h2", "h4"])
-        title = (title_el.get_text(" ", strip=True) if title_el else anchor.get_text(" ", strip=True)).strip()
+        raw_title = (title_el.get_text(" ", strip=True) if title_el else anchor.get_text(" ", strip=True)).strip()
+        title = _clean_title(raw_title)
         if not title:
             return None
 
@@ -216,7 +217,11 @@ class BiblioCommonsScraper(BaseScraper):
         audiences = _extract_audience_labels(text_blob)
         age_range = _audiences_to_age_range(audiences)
         registration = _parse_registration(text_blob)
-        description = _extract_description(card, title)
+        # Listing cards on BiblioCommons v2 don't carry a description —
+        # they show only date/time/audience boilerplate. The detail page
+        # (linked via source_url) has the real blurb; skip rather than
+        # emit noise into the iOS detail view.
+        description: str | None = None
 
         weekly: list[WeeklyTime] = []
         if start_time and end_time and day_of_week:
@@ -392,6 +397,27 @@ def _parse_registration(text: str) -> Registration:
             is_open = True
             raw_text = "Registration required"
     return Registration(is_open=is_open, raw_text=raw_text)
+
+
+# BiblioCommons sometimes appends a status badge (e.g. "In Progress",
+# "Cancelled", "Online", "In Person") right after the title in the same
+# h3 — strip those so the title doesn't read "Storytime In Progress".
+_TITLE_STATUS_SUFFIX_RE = re.compile(
+    r"\s+(In Progress|Cancelled|Canceled|Postponed|Online|In Person|Hybrid|"
+    r"Registration Required|Drop[- ]?in|Full|Waitlist|Sold Out)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _clean_title(title: str) -> str:
+    cleaned = title
+    # Repeat to handle "Title In Progress Drop-in" → trim once per pass.
+    for _ in range(3):
+        new = _TITLE_STATUS_SUFFIX_RE.sub("", cleaned).strip()
+        if new == cleaned:
+            break
+        cleaned = new
+    return cleaned
 
 
 def _extract_description(card: Tag, title: str) -> str | None:
