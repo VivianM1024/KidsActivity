@@ -274,5 +274,112 @@
         "62cedbbea627452f0046a67c"
       ]
     }
+  },
+  {
+    "slug": "wnpld",
+    "name": "Winnetka-Northfield Public Library District",
+    "venue_type": "library",
+    "platform": "custom_html",
+    "base_url": "https://www.wnpld.org/",
+    "search_url": null,
+    "center_lat": 42.1081,
+    "center_lon": -87.7356,
+    "served_zipcodes": [
+      "60093",
+      "60043",
+      "60082"
+    ],
+    "aliases": [],
+    "sitecode": null,
+    "amilia_org_slug": null,
+    "custom_config": {
+      "listing_url": "https://www.wnpld.org/events/upcoming",
+      "pagination": {
+        "param": "page",
+        "start": 0,
+        "max_pages": 6
+      },
+      "item_selector": "article.event-card",
+      "fields": {
+        "name": "h3.lc-event__title a",
+        "url": "h3.lc-event__title a@href",
+        "time_text": ".lc-event-info-item--time",
+        "audience_text": ".lc-event-info__item--colors",
+        "location_text": ".lc-event-info__item--categories"
+      },
+      "audience_filter": [
+        "babies",
+        "toddlers",
+        "preschoolers",
+        "kids",
+        "school age",
+        "tweens",
+        "teens",
+        "family",
+        "children"
+      ],
+      "exclude_terms": [
+        "adults only"
+      ]
+    }
+  },
+  {
+    "slug": "epl",
+    "name": "Evanston Public Library",
+    "venue_type": "library",
+    "platform": "biblio_commons",
+    "base_url": "https://evanstonlibrary.bibliocommons.com/",
+    "search_url": null,
+    "center_lat": 42.0451,
+    "center_lon": -87.6877,
+    "served_zipcodes": [
+      "60201",
+      "60202",
+      "60203"
+    ],
+    "aliases": [],
+    "sitecode": null,
+    "amilia_org_slug": null,
+    "custom_config": {
+      "audience_ids": [
+        "6696ef2fd8f18e5758124ff0",
+        "6696ef5fe3e1ee300048b71b",
+        "664cce641e57af2800453c7b",
+        "664cce671e57af2800453c97"
+      ]
+    }
+  },
+  {
+    "slug": "kohlchildrens",
+    "name": "Kohl Children's Museum",
+    "venue_type": "museum",
+    "platform": "custom_html",
+    "base_url": "https://www.kohlchildrensmuseum.org/",
+    "search_url": null,
+    "center_lat": 42.0747,
+    "center_lon": -87.7747,
+    "served_zipcodes": [
+      "60026",
+      "60025",
+      "60093",
+      "60043"
+    ],
+    "aliases": [],
+    "sitecode": null,
+    "amilia_org_slug": null,
+    "custom_config": {
+      "listing_url": "https://www.kohlchildrensmuseum.org/visit/calendar/",
+      "item_selector": "a.event-pod",
+      "fields": {
+        "name": "h3",
+        "url": "@href",
+        "date_range_text": "p.date-time",
+        "description": ".desc"
+      },
+      "default_age": {
+        "min_months": 24,
+        "max_months": 144
+      }
+    }
   }
 ]
