@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import CoreLocation
+import OSLog
+
+private let log = Logger(subsystem: "com.vivianm1024.KidsActivity", category: "store")
 
 // Single source of truth — owns the loaded data, the active filters, the
 // user's kids, saved/registered sets, and the calendar events derived from
@@ -19,7 +22,13 @@ final class ActivityStore {
     var state: LoadState = .idle
     var manifest: Manifest?
     var venues: [Venue] = []
-    var activities: [Activity] = []
+    /// SQLite-backed query layer. Replaces the old in-memory `[Activity]`
+    /// array — Browse, Saved, and Calendar lookups all flow through this.
+    var repository: SQLiteActivityRepository?
+    /// Total row count, populated on load. Drives "Chicagoland · X listings".
+    var totalActivityCount: Int = 0
+    /// Per-venue-type counts for FilterSheet's right-aligned tallies.
+    var venueTypeCounts: [VenueType: Int] = [:]
     var filters: ActivityFilters = .default
 
     // Household / personalization. Empty by default — onboarding is what
@@ -38,6 +47,17 @@ final class ActivityStore {
     // assignment — unassigned events stay neutral.
     var linkedParent: LinkedParent? = nil
     var assignments: [Assignment] = []
+
+    /// Append-only audit log of co-parent-relevant events. Surfaced in
+    /// LinkedSettingsView's "Recent activity" card. Capped at the last 30
+    /// entries so the snapshot stays small.
+    var activityLog: [ActivityLogEntry] = []
+
+    /// True when the most recent load served stale cached data (network
+    /// fetch failed and the on-disk cache filled in). Drives the
+    /// `CachedBanner` above the Browse list.
+    var lastLoadFromCache: Bool = false
+    var lastCacheDate: Date? = nil
 
     var sortMode: SortMode = .when
     var searchText: String = ""
@@ -58,26 +78,32 @@ final class ActivityStore {
     var selectedKids: [Kid] { kids.filter { selectedKidIds.contains($0.id) } }
     var venueBySlug: [String: Venue] { Dictionary(uniqueKeysWithValues: venues.map { ($0.slug, $0) }) }
 
-    /// `filters.keyword` is set from `searchText`; we surface them as one
-    /// filter pipeline so debouncing in the UI is the only knob to tune.
+    /// Browse list — SQLite query that filters + sorts in one shot.
+    /// Returns [] before the repository is loaded so the skeleton can show.
     var filteredActivities: [Activity] {
+        guard let repository else { return [] }
         var f = filters
-        f.keyword = searchText
         f.homeCoordinate = homeCoordinate
-        let result = FilterEngine.apply(
-            activities: activities, venues: venues, filters: f, kids: selectedKids
+        return repository.query(
+            filters: f, kids: selectedKids, sort: sortMode,
+            searchText: searchText, home: homeCoordinate
         )
-        return FilterEngine.sort(result, by: sortMode, venues: venues, home: homeCoordinate)
     }
 
     var savedActivities: [Activity] {
-        let bySaved = Dictionary(uniqueKeysWithValues: activities.map { ($0.activityId, $0) })
-        return savedActivityIds.compactMap { bySaved[$0] }
+        guard let repository else { return [] }
+        return repository.activities(ids: Array(savedActivityIds))
             .sorted { lhs, rhs in
                 let l = lhs.schedule.startDate ?? .distantFuture
                 let r = rhs.schedule.startDate ?? .distantFuture
                 return l < r
             }
+    }
+
+    /// Look up a single activity by id. Hot path for calendar / saved /
+    /// registration flows that work in terms of stored activity_ids.
+    func activity(forId id: String) -> Activity? {
+        repository?.activity(id: id)
     }
 
     var consideringActivities: [Activity] {
@@ -97,7 +123,7 @@ final class ActivityStore {
             return kids.first { $0.id == id }
         }
         // Fallback: pick first selected kid whose age fits the activity.
-        guard let activity = activities.first(where: { $0.activityId == activityId }) else { return nil }
+        guard let activity = activity(forId: activityId) else { return nil }
         return matchKids(for: activity).first ?? kids.first
     }
 
@@ -119,9 +145,15 @@ final class ActivityStore {
         case .success(let data):
             self.manifest = data.manifest
             self.venues = data.venues
-            self.activities = data.activities
+            self.repository = data.repository
+            self.totalActivityCount = data.repository.totalCount()
+            self.venueTypeCounts = data.repository.countsByVenueType()
+            self.lastLoadFromCache = data.fromCache
+            self.lastCacheDate = data.cacheDate
             self.state = .ready
+            log.info("store.load ready: \(self.totalActivityCount) activities, fromCache=\(data.fromCache)")
         case .failure(let err):
+            log.error("store.load failed: \(String(describing: err))")
             self.state = .error(describe(err))
         }
     }
@@ -146,6 +178,7 @@ final class ActivityStore {
         }
         self.linkedParent = snap.linkedParent
         self.assignments = snap.assignments
+        self.activityLog = snap.activityLog
         // Pre-onboarding installs already had data — treat that as onboarded
         // so they don't see the flow on next launch.
         self.hasCompletedOnboarding = snap.hasCompletedOnboarding
@@ -168,7 +201,8 @@ final class ActivityStore {
             homeLon: homeCoordinate.longitude,
             weeklyAvailability: weeklyAvailability,
             linkedParent: linkedParent,
-            assignments: assignments
+            assignments: assignments,
+            activityLog: activityLog
         ))
     }
 
@@ -201,6 +235,9 @@ final class ActivityStore {
             (existing.sessionDate?.timeIntervalSince1970 == date?.timeIntervalSince1970)
         }
         assignments.append(new)
+        if let activity = activity(forId: activityId) {
+            appendLog(.assigned(activityName: activity.name, kind: kind.label))
+        }
         persist()
     }
 
@@ -214,6 +251,7 @@ final class ActivityStore {
 
     func linkPartner(_ partner: Parent, code: String) {
         linkedParent = LinkedParent(partner: partner, inviteCode: code, linkedAt: Date())
+        appendLog(.linked(partnerName: partner.name, code: code))
         persist()
     }
 
@@ -221,9 +259,18 @@ final class ActivityStore {
     /// reference the partner's UUID, so leaving them dangling would render
     /// nothing on screen.
     func unlinkPartner() {
+        let name = linkedParent?.partner.name ?? "Partner"
         linkedParent = nil
         assignments.removeAll()
+        appendLog(.unlinked(partnerName: name))
         persist()
+    }
+
+    private func appendLog(_ event: ActivityLogEntry.Event) {
+        activityLog.append(ActivityLogEntry(at: Date(), event: event))
+        if activityLog.count > 30 {
+            activityLog.removeFirst(activityLog.count - 30)
+        }
     }
 
     // MARK: - Conflicts
@@ -356,6 +403,7 @@ final class ActivityStore {
             } else if let auto = matchKids(for: a).first ?? selectedKids.first {
                 savedKidByActivity[id] = auto.id
             }
+            appendLog(.saved(activityName: a.name))
         }
         persist()
     }
@@ -365,7 +413,7 @@ final class ActivityStore {
         // Re-generate calendar events for this activity if registered.
         if registeredActivityIds.contains(activityId) {
             calendarEvents.removeAll { $0.activityId == activityId }
-            if let activity = activities.first(where: { $0.activityId == activityId }) {
+            if let activity = activity(forId: activityId) {
                 calendarEvents.append(contentsOf: makeEvents(for: activity, kid: kid))
             }
         }
@@ -385,6 +433,7 @@ final class ActivityStore {
                 if savedKidByActivity[id] == nil { savedKidByActivity[id] = kid.id }
                 calendarEvents.append(contentsOf: makeEvents(for: a, kid: kid))
             }
+            appendLog(.registered(activityName: a.name))
         }
         persist()
     }
@@ -476,9 +525,11 @@ final class ActivityStore {
         switch err {
         case .schemaMismatch(let found, let supported):
             return "Data schema v\(found) is newer than this app (v\(supported)). Update the app."
-        case .decode(let e): return "Couldn't read data: \(e.localizedDescription)"
-        case .network(let e): return "Couldn't reach the server: \(e.localizedDescription)"
-        case .missingCache: return "No cached data available."
+        case .decode(let e):     return "Couldn't read data: \(e.localizedDescription)"
+        case .decompress(let e): return "Couldn't decompress data: \(e.localizedDescription)"
+        case .sqlite(let e):     return "Couldn't open the local database: \(e.localizedDescription)"
+        case .network(let e):    return "Couldn't reach the server: \(e.localizedDescription)"
+        case .missingCache:      return "No cached data available."
         }
     }
 }
@@ -500,6 +551,7 @@ private struct StoreSnapshot: Codable {
     var weeklyAvailability: Set<ActivityFilters.DayOfWeek> = []
     var linkedParent: LinkedParent? = nil
     var assignments: [Assignment] = []
+    var activityLog: [ActivityLogEntry] = []
 }
 
 private final class StorePersistence {
@@ -507,11 +559,16 @@ private final class StorePersistence {
     private let defaults = UserDefaults.standard
 
     func load() -> StoreSnapshot {
-        guard let data = defaults.data(forKey: Self.key),
-              let snap = try? JSONDecoder().decode(StoreSnapshot.self, from: data) else {
+        guard let data = defaults.data(forKey: Self.key) else {
+            log.info("StorePersistence.load: no data")
             return StoreSnapshot()
         }
-        return snap
+        do {
+            return try JSONDecoder().decode(StoreSnapshot.self, from: data)
+        } catch {
+            log.error("StorePersistence.load decode failed: \(String(describing: error))")
+            return StoreSnapshot()
+        }
     }
 
     func save(_ snap: StoreSnapshot) {

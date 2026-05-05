@@ -383,11 +383,7 @@ struct WhyThisSheet: View {
         // the user's saved activities. Carried at low weight so it doesn't
         // dominate.
         let similarRule: Rule = {
-            let savedCategories = Set(
-                store.activities
-                    .filter { store.savedActivityIds.contains($0.activityId) }
-                    .map(\.inferredCategory)
-            )
+            let savedCategories = Set(store.savedActivities.map(\.inferredCategory))
             if savedCategories.isEmpty {
                 return Rule(
                     label: "Similar to what you've saved",

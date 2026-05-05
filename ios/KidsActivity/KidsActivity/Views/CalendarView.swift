@@ -16,8 +16,13 @@ struct CalendarView: View {
 
     private var calendar: Calendar { Calendar(identifier: .iso8601) }
     private var todayStartOfDay: Date { calendar.startOfDay(for: Date()) }
+    /// Calendar events fan out from `store.calendarEvents`; here we batch-
+    /// fetch the matching Activity rows so each event row can render its
+    /// title/venue without a per-row SQL hit.
     private var activitiesById: [String: Activity] {
-        Dictionary(uniqueKeysWithValues: store.activities.map { ($0.activityId, $0) })
+        let ids = Array(Set(store.calendarEvents.map(\.activityId)))
+        let rows = store.repository?.activities(ids: ids) ?? []
+        return Dictionary(uniqueKeysWithValues: rows.map { ($0.activityId, $0) })
     }
     private var venuesBySlug: [String: Venue] { store.venueBySlug }
     private var kidsById: [UUID: Kid] {
@@ -375,16 +380,12 @@ struct CalendarView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 4) {
-            Text("Nothing scheduled.")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.warmTextPrimary)
-            Text("Confirm a saved activity to see it here.")
-                .font(.system(size: 12))
-                .foregroundStyle(.warmTextMuted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        EmptyStateView(
+            illustration: AnyView(EmptyIllCalendar()),
+            eyebrow: "Nothing scheduled",
+            title: "Your calendar is clear.",
+            copy: "Once you confirm a saved activity, its sessions show up here — with reminders the day before."
+        )
     }
 
     // MARK: - Helpers

@@ -399,7 +399,7 @@ struct FilterSheet: View {
                                 .font(.system(size: 14.5))
                                 .foregroundStyle(.warmTextPrimary)
                             Spacer(minLength: 0)
-                            Text("\(store.activities.filter { $0.venueType == type }.count)")
+                            Text("\(store.venueTypeCounts[type] ?? 0)")
                                 .font(.system(size: 12).monospacedDigit())
                                 .foregroundStyle(.warmTextFaint)
                         }

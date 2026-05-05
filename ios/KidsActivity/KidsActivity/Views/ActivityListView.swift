@@ -27,6 +27,15 @@ struct BrowseView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 6)
 
+                    if store.lastLoadFromCache {
+                        CachedBanner(
+                            lastUpdated: cacheAgeLabel(),
+                            onRetry: { Task { await store.refresh() } }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 6)
+                    }
+
                     searchAndKids(searchBinding: $localSearch)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
@@ -45,15 +54,19 @@ struct BrowseView: View {
                     if filtered.isEmpty {
                         emptyState
                     } else {
-                        VStack(spacing: 6) {
-                            ForEach(filtered) { activity in
-                                NavigationLink(value: activity) {
-                                    ActivityRow(activity: activity)
-                                }
-                                .buttonStyle(.plain)
+                        // Hoisted out of the inner VStack so the outer
+                        // LazyVStack actually lazy-renders rows. With 12k+
+                        // results in scope, wrapping in a non-lazy VStack
+                        // forced SwiftUI to instantiate every row up-front
+                        // and the first paint never landed.
+                        ForEach(filtered) { activity in
+                            NavigationLink(value: activity) {
+                                ActivityRow(activity: activity)
                             }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 3)
                         }
-                        .padding(.horizontal, 14)
                     }
 
                     Color.clear.frame(height: 32)
@@ -108,9 +121,21 @@ struct BrowseView: View {
 
     // MARK: - Sections
 
+    /// Friendly relative-time label for the cached banner. Returns
+    /// "just now", "12m ago", "2h ago", or a date when older than a day.
+    private func cacheAgeLabel() -> String {
+        guard let date = store.lastCacheDate else { return "earlier" }
+        let interval = Date().timeIntervalSince(date)
+        if interval < 60 { return "just now" }
+        if interval < 3600 { return "\(Int(interval / 60))m ago" }
+        if interval < 86_400 { return "\(Int(interval / 3600))h ago" }
+        let f = DateFormatter(); f.dateFormat = "MMM d"
+        return f.string(from: date)
+    }
+
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Chicagoland · \(store.activities.count) listings")
+            Text("Chicagoland · \(store.totalActivityCount) listings")
                 .font(.v5Eyebrow)
                 .tracking(0.5)
                 .foregroundStyle(Color.oklch(0.55, 0.05, 60))
@@ -214,7 +239,6 @@ struct BrowseView: View {
         case .parkDistrict: return "Parks"
         case .library: return "Library"
         case .museum: return "Museum"
-        case .communityCenter: return "Comm"
         }
     }
 

@@ -42,14 +42,12 @@ struct Activity: Identifiable, Codable, Hashable {
 enum VenueType: String, Codable, CaseIterable, Hashable {
     case parkDistrict = "park_district"
     case library = "library"
-    case communityCenter = "community_center"
     case museum = "museum"
 
     var label: String {
         switch self {
         case .parkDistrict: return "Park District"
         case .library: return "Library"
-        case .communityCenter: return "Community Center"
         case .museum: return "Museum"
         }
     }
@@ -58,7 +56,6 @@ enum VenueType: String, Codable, CaseIterable, Hashable {
         switch self {
         case .parkDistrict: return "tree.fill"
         case .library: return "books.vertical.fill"
-        case .communityCenter: return "person.3.fill"
         case .museum: return "building.columns.fill"
         }
     }

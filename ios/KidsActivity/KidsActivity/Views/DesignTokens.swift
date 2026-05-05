@@ -175,10 +175,9 @@ extension Kid {
 extension VenueType {
     var letter: String {
         switch self {
-        case .parkDistrict:    return "P"
-        case .library:         return "L"
-        case .museum:          return "M"
-        case .communityCenter: return "C"
+        case .parkDistrict: return "P"
+        case .library:      return "L"
+        case .museum:       return "M"
         }
     }
 }

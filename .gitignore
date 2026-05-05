@@ -28,5 +28,9 @@ ios/KidsActivity/Info.plist
 # Local cache for HTTP/LLM responses (never commit)
 .kidsactivity-cache/
 
+# Raw SQLite mirror — only the .gz ships to GitHub Pages. The raw .db
+# stays for local debugging (`sqlite3 docs/data/activities.db`).
+docs/data/activities.db
+
 # Claude Code local settings
 .claude/

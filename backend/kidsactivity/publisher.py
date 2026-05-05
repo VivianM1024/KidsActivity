@@ -19,6 +19,7 @@ from pathlib import Path
 from kidsactivity.locator import load_all_venues
 from kidsactivity.logging import get_logger
 from kidsactivity.models import Activity, Venue
+from kidsactivity.sqlite_publisher import write_sqlite
 
 log = get_logger(__name__)
 
@@ -44,6 +45,10 @@ def publish(activities: list[Activity], out_dir: Path) -> None:
     _dump(out_dir / "manifest.json", manifest)
     _dump(out_dir / "venues.json", [_to_jsonable(v) for v in venues])
     _dump(out_dir / "activities.json", [_to_jsonable(a) for a in activities])
+
+    # SQLite mirror for the iOS app's query-on-demand path. JSON stays
+    # alongside as a rollback in case the SQLite path needs to ship dark.
+    write_sqlite(activities, venues, out_dir / "activities.db")
 
     log.info(
         "Published %d activities and %d venues to %s",

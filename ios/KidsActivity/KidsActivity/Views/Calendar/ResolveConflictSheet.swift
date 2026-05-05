@@ -15,10 +15,10 @@ struct ResolveConflictSheet: View {
     @State private var travelLoading: Bool = true
 
     private var primaryActivity: Activity? {
-        store.activities.first { $0.activityId == conflict.primary.activityId }
+        store.activity(forId: conflict.primary.activityId)
     }
     private var secondaryActivity: Activity? {
-        store.activities.first { $0.activityId == conflict.secondary.activityId }
+        store.activity(forId: conflict.secondary.activityId)
     }
     private var primaryKid: Kid? {
         store.kids.first { $0.id == conflict.primary.kidId }
@@ -156,6 +156,15 @@ struct ResolveConflictSheet: View {
             }
 
             GeometryReader { geo in
+                let trackWidth = max(0, geo.size.width)
+                // Reserve at least 8pt for the bar so a microscopic event (1-min
+                // overlap) doesn't render as a sliver. Cap so the bar can never
+                // overrun the track's right edge under tight widths.
+                let rawWidth = trackWidth * widthFraction
+                let barWidth = max(8, min(rawWidth, trackWidth))
+                let rawLeft = trackWidth * leftFraction
+                let barLeft = min(rawLeft, max(0, trackWidth - barWidth))
+
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color(brown: 0.06))
@@ -164,18 +173,23 @@ struct ResolveConflictSheet: View {
 
                     Capsule()
                         .fill(kid?.avatarColor ?? Color.warmTextSecondary)
-                        .frame(width: max(8, geo.size.width * widthFraction), height: 18)
-                        .offset(x: geo.size.width * leftFraction, y: 0)
+                        .frame(width: barWidth, height: 18)
                         .overlay(alignment: .leading) {
+                            // Text lives inside the bar's frame; the bar's
+                            // .offset already places it horizontally, so the
+                            // text just needs leading padding within the bar.
                             if let activityName = activityName(for: event) {
                                 Text(activityName)
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundStyle(.white)
                                     .lineLimit(1)
                                     .padding(.leading, 8)
-                                    .offset(x: geo.size.width * leftFraction)
+                                    .padding(.trailing, 4)
+                                    .frame(width: barWidth, alignment: .leading)
+                                    .clipped()
                             }
                         }
+                        .offset(x: barLeft, y: 0)
                 }
             }
             .frame(height: 28)
