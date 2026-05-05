@@ -185,6 +185,61 @@ venues:
         - "630f73c92f32903000449b34"  # Kids (Grades K-8)
         - "62cedbbea627452f0046a67c"  # Teens (Grades 9-12)
 
+  # Winnetka-Northfield Public Library District — server-rendered Drupal
+  # theme using `lc-event` / `event-card` classes (the "Library Calendar"
+  # node type). Pagination via `?page=0..N` (Drupal-style, zero-indexed).
+  - slug: wnpld
+    name: Winnetka-Northfield Public Library District
+    venue_type: library
+    platform: custom_html
+    base_url: https://www.wnpld.org/
+    center_lat: 42.1081
+    center_lon: -87.7356
+    served_zipcodes: ["60093", "60043", "60082"]
+    custom_config:
+      listing_url: https://www.wnpld.org/events/upcoming
+      pagination:
+        param: page
+        start: 0
+        max_pages: 6
+      item_selector: "article.event-card"
+      fields:
+        # The aria-label on the title link carries the canonical
+        # "Tuesday, May 5, 2026 @ 9:30am" — picked up by the blob scan.
+        name: "h3.lc-event__title a"
+        url: "h3.lc-event__title a@href"
+        time_text: ".lc-event-info-item--time"
+        audience_text: ".lc-event-info__item--colors"
+        location_text: ".lc-event-info__item--categories"
+      audience_filter:
+        - babies
+        - toddlers
+        - preschoolers
+        - kids
+        - school age
+        - tweens
+        - teens
+        - family
+        - children
+      exclude_terms: ["adults only"]
+
+  # Evanston Public Library — BiblioCommons v2. Audience IDs lifted from
+  # the live filter URLs at evanstonlibrary.bibliocommons.com/v2/events.
+  - slug: epl
+    name: Evanston Public Library
+    venue_type: library
+    platform: biblio_commons
+    base_url: https://evanstonlibrary.bibliocommons.com/
+    center_lat: 42.0451
+    center_lon: -87.6877
+    served_zipcodes: ["60201", "60202", "60203"]
+    custom_config:
+      audience_ids:
+        - "6696ef2fd8f18e5758124ff0"  # Babies & Toddlers
+        - "6696ef5fe3e1ee300048b71b"  # Kids K-2
+        - "664cce641e57af2800453c7b"  # Kids 3-5
+        - "664cce671e57af2800453c97"  # Teens 6-12
+
   # Skokie Public Library uses LibCal/Springshare (NOT BiblioCommons) for
   # events; needs a different scraper. Stubbed here for follow-up.
   # - slug: skokielibrary
@@ -195,33 +250,21 @@ venues:
   #   center_lat: 42.0334
   #   center_lon: -87.7334
   #
-  # Winnetka-Northfield uses a custom CMS — needs custom_html config.
-  # - slug: wnpld
-  #   name: Winnetka-Northfield Public Library District
+  # Wilmette Public Library and Northbrook Public Library both run on
+  # Communico, whose public events are React-rendered against an
+  # auth-gated `api.communico.co/v3/attend/events` endpoint. A scraper
+  # would need either Playwright or reverse-engineered tenant auth — not
+  # yet built. Tenant identifiers (lifted from <meta> tags on each site)
+  # for whoever picks this up next:
+  #   wilmette  → client=wilmette, location=650
+  #   northbrook → client=northbrook, location=1926
+  # - slug: wilmettepl
+  #   name: Wilmette Public Library
   #   venue_type: library
-  #   platform: custom_html
-  #   base_url: https://www.wnpld.org/
-  #   center_lat: 42.1081
-  #   center_lon: -87.7356
-  #   custom_config:
-  #     listing_url: https://www.wnpld.org/events/upcoming
-  #     item_selector: "h3"
-  #     fields: { name: "a", url: "a@href" }
-  #
-  # Evanston Public Library — when on BiblioCommons, copy the Glenview
-  # block and look up Evanston's audience UUIDs.
-  # - slug: epl
-  #   name: Evanston Public Library
-  #   venue_type: library
-  #   platform: biblio_commons
-  #   base_url: https://epl.bibliocommons.com/
-  #   center_lat: 42.0451
-  #   center_lon: -87.6877
-  #   custom_config:
-  #     audience_ids: ["...", "...", "..."]
-  #
-  # Northbrook Public Library — Communico (visit.northbrook.info), needs
-  # CommunicoScraper which is still a stub.
+  #   platform: communico
+  #   base_url: https://wilmette.libnet.info/
+  #   center_lat: 42.0717
+  #   center_lon: -87.7220
   # - slug: northbrookpl
   #   name: Northbrook Public Library
   #   venue_type: library
@@ -244,21 +287,30 @@ venues:
   #   center_lon: -87.6298
 
   # ============================================================
-  # Museums (stubbed — needs CUSTOM_HTML config per site)
+  # Museums
   # ============================================================
-  # - slug: kohlchildrens
-  #   name: Kohl Children's Museum
-  #   venue_type: museum
-  #   platform: custom_html
-  #   base_url: https://www.kohlchildrensmuseum.org/
-  #   center_lat: 42.0747
-  #   center_lon: -87.7747
-  #   custom_config:
-  #     listing_url: https://www.kohlchildrensmuseum.org/events/
-  #     item_selector: ".event-card"
-  #     fields:
-  #       name: ".event-title"
-  #       date: ".event-date"
-  #       url: "a@href"
-  #     llm_fallback: true
-  #     audience_filter: ["kids", "family", "children"]
+  # Kohl Children's Museum (Glenview) — small daily-schedule page with
+  # `.event-pod` cards covering the current Special Exhibit + flagship
+  # recurring programs (Books and Bops, Art Adventures). Each `.event-pod`
+  # IS the link, so url is read off the item's own `@href`. Special
+  # Exhibits carry a date-range string (`January 24 – May 10`), recurring
+  # programs are open-ended.
+  - slug: kohlchildrens
+    name: Kohl Children's Museum
+    venue_type: museum
+    platform: custom_html
+    base_url: https://www.kohlchildrensmuseum.org/
+    center_lat: 42.0747
+    center_lon: -87.7747
+    served_zipcodes: ["60026", "60025", "60093", "60043"]
+    custom_config:
+      listing_url: https://www.kohlchildrensmuseum.org/visit/calendar/
+      item_selector: "a.event-pod"
+      fields:
+        name: "h3"
+        url: "@href"
+        date_range_text: "p.date-time"
+        description: ".desc"
+      default_age:
+        min_months: 24
+        max_months: 144
