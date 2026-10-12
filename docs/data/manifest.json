@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "last_updated": "2026-10-05T19:12:30.935861+00:00",
+  "last_updated": "2026-10-12T19:49:27.403635+00:00",
   "venue_count": 21,
-  "activity_count": 8400,
+  "activity_count": 7974,
   "venues_by_type": {
     "park_district": 17,
     "library": 3,
     "museum": 1
   },
   "activities_by_type": {
-    "park_district": 7983,
-    "library": 417
+    "park_district": 7579,
+    "library": 395
   }
 }
